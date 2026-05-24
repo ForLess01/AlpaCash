@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { motion } from "motion/react";
 import { Play, Pause, Star, Lock, BookOpen } from "lucide-react";
 import { ArtCard, SectionLabel } from "../../DashShell";
 import { SeedLeaf, StampSeal, ScissorsShear, ScaleBalance, ChartSparkle, ClipboardCheckArt } from "../../../icons/AlpaIcons";
 
 type ModuleStatus = "completado" | "en curso" | "bloqueado";
-type Module = { id: string; title: string; duration: string; progress: number; status: ModuleStatus; icon: JSX.Element; color: string };
+type Module = { id: string; title: string; duration: string; progress: number; status: ModuleStatus; icon: React.JSX.Element; color: string };
 
 const MODULES: Module[] = [
   { id: "M01", title: "Clasificación de fibra", duration: "45 min", progress: 100, status: "completado", icon: <SeedLeaf size={20} />, color: "var(--mint)" },

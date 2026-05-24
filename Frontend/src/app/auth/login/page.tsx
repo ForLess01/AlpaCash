@@ -1,14 +1,10 @@
-"use client";
-
-import { Login } from "@/components/auth/Login";
-import { useRouter } from "next/navigation";
+import { Suspense } from "react";
+import { LoginClient } from "./LoginClient";
 
 export default function LoginPage() {
-  const router = useRouter();
   return (
-    <Login
-      onBack={() => router.push("/")}
-      onRegister={() => router.push("/auth/register")}
-    />
+    <Suspense>
+      <LoginClient />
+    </Suspense>
   );
 }
