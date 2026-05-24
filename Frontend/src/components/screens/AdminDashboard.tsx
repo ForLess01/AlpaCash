@@ -20,6 +20,7 @@ const traffic = Array.from({ length: 24 }).map((_, i) => ({ h: i, v: Math.round(
 
 export function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [tab, setTab] = useState("inicio");
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const nav = [
     { key: "inicio", label: "Panel", icon: <ChartSparkle size={18} /> },
     { key: "users", label: "Usuarios", icon: <Users className="w-[18px] h-[18px]" /> },
@@ -124,6 +125,11 @@ export function AdminDashboard({ onBack }: { onBack: () => void }) {
       <div className="grid lg:grid-cols-2 gap-6">
         <div>
           <SectionLabel n="N°03">Cola de validación</SectionLabel>
+          {selectedUser && (
+            <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--ivory)] px-4 py-3 text-sm text-[var(--teal-deep)]">
+              Revisando expediente de {selectedUser}. Desde acá podés continuar la validación documental.
+            </div>
+          )}
           <div className="space-y-3">
             {[
               { id: "USR-1042", who: "Jacinto Mamani", role: "Productor", st: "DNI verificado" },
@@ -139,7 +145,7 @@ export function AdminDashboard({ onBack }: { onBack: () => void }) {
                   <div className="text-xs text-[var(--ink)]/60">{u.role} · <span className="font-mono">{u.id}</span></div>
                 </div>
                 <span className="px-3 py-1 rounded-full bg-[var(--paper)] border-2 border-[var(--ink)]/15 text-[10px] font-mono uppercase">{u.st}</span>
-                <button className="w-9 h-9 rounded-full bg-[var(--ink)] text-[var(--ivory)] flex items-center justify-center"><Eye className="w-4 h-4" /></button>
+                <button onClick={() => setSelectedUser(u.who)} className="w-9 h-9 rounded-full bg-[var(--ink)] text-[var(--ivory)] flex items-center justify-center"><Eye className="w-4 h-4" /></button>
               </ArtCard>
             ))}
           </div>

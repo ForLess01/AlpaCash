@@ -17,6 +17,7 @@ const cashflow = Array.from({ length: 12 }).map((_, i) => ({
 
 export function FinancialDashboard({ onBack }: { onBack: () => void }) {
   const [tab, setTab] = useState("inicio");
+  const [queueOpen, setQueueOpen] = useState(false);
   const nav = [
     { key: "inicio", label: "Panel", icon: <ChartSparkle size={18} /> },
     { key: "scoring", label: "Scoring productor", icon: <ScaleBalance size={18} /> },
@@ -118,9 +119,14 @@ export function FinancialDashboard({ onBack }: { onBack: () => void }) {
               </div>
             ))}
           </div>
-          <button className="mt-4 w-full px-4 py-3 rounded-full bg-[var(--ink)] text-[var(--ivory)] text-sm flex items-center justify-center gap-2" style={{ fontWeight: 500 }}>
+          <button onClick={() => setQueueOpen((prev) => !prev)} className="mt-4 w-full px-4 py-3 rounded-full bg-[var(--ink)] text-[var(--ivory)] text-sm flex items-center justify-center gap-2" style={{ fontWeight: 500 }}>
             Revisar cola <TrendingUp className="w-4 h-4" />
           </button>
+          {queueOpen && (
+            <div className="mt-3 rounded-xl border border-[var(--ink)]/10 bg-[var(--ivory)] p-3 text-xs text-[var(--ink)]/70">
+              Cola abierta: priorizá montos altos con score fuerte y trazabilidad completa antes de emitir pre-financiamiento.
+            </div>
+          )}
         </ArtCard>
       </div>
 

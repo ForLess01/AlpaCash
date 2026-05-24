@@ -60,13 +60,13 @@ export async function proxy(request: NextRequest) {
       .single();
 
     if (!profile) {
-      const loginUrl = request.nextUrl.clone();
-      loginUrl.pathname = "/auth/login";
-      loginUrl.searchParams.set("error", "no-profile");
-      return NextResponse.redirect(loginUrl);
+      const completeUrl = request.nextUrl.clone();
+      completeUrl.pathname = "/auth/complete-profile";
+      completeUrl.searchParams.delete("error");
+      return NextResponse.redirect(completeUrl);
     }
 
-    if (profile.estado === "suspendido" || profile.estado === "rechazado") {
+    if (profile.estado === "pendiente" || profile.estado === "suspendido" || profile.estado === "rechazado") {
       await supabase.auth.signOut();
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/auth/login";

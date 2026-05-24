@@ -5,31 +5,17 @@ import { motion, AnimatePresence } from "motion/react";
 import { ArrowUpRight, Check, X, MessageSquare, Clock } from "lucide-react";
 import { ArtCard, SectionLabel } from "../../DashShell";
 import { HandHold, FactorySimple } from "../../../icons/AlpaIcons";
+import { useOffers, type OfferRecord } from "@/lib/hooks/useDashboardData";
+import { createClient } from "@/lib/supabase/client";
 
 type OfferStatus = "pendiente" | "aceptada" | "rechazada" | "contraoferta" | "contra-enviada";
 
-type Offer = {
-  id: string;
-  buyer: string;
-  lot: string;
-  offerPrice: number;
-  askPrice: number;
-  lb: number;
-  time: string;
-  status: OfferStatus;
-  counterPrice?: number;
-};
-
-const INITIAL_OFFERS: Offer[] = [
-  { id: "OF-001", buyer: "Textiles Andina SAC", lot: "AC-2049", offerPrice: 24.5, askPrice: 24.1, lb: 240, time: "hace 12 min", status: "pendiente" },
-  { id: "OF-002", buyer: "Pacomarca Export", lot: "AC-2048", offerPrice: 33.0, askPrice: 32.5, lb: 120, time: "hace 1 h", status: "pendiente" },
-  { id: "OF-003", buyer: "Grupo Inka Textil", lot: "AC-2056", offerPrice: 20.0, askPrice: 22.0, lb: 200, time: "hace 3 h", status: "pendiente" },
-];
+type Offer = OfferRecord;
 
 const HISTORY: Offer[] = [
-  { id: "OF-099", buyer: "Kuna SA", lot: "AC-2044", offerPrice: 35.0, askPrice: 34.0, lb: 90, time: "hace 2 días", status: "aceptada" },
-  { id: "OF-098", buyer: "Michell y Cía", lot: "AC-2040", offerPrice: 18.0, askPrice: 24.0, lb: 180, time: "hace 4 días", status: "rechazada" },
-  { id: "OF-097", buyer: "Inca Tops", lot: "AC-2038", offerPrice: 41.0, askPrice: 43.0, lb: 60, time: "hace 5 días", status: "contra-enviada" },
+  { recordId: "", id: "OF-099", buyer: "Kuna SA", lot: "AC-2044", offerPrice: 35.0, askPrice: 34.0, lb: 90, time: "hace 2 días", status: "aceptada" },
+  { recordId: "", id: "OF-098", buyer: "Michell y Cía", lot: "AC-2040", offerPrice: 18.0, askPrice: 24.0, lb: 180, time: "hace 4 días", status: "rechazada" },
+  { recordId: "", id: "OF-097", buyer: "Inca Tops", lot: "AC-2038", offerPrice: 41.0, askPrice: 43.0, lb: 60, time: "hace 5 días", status: "contra-enviada" },
 ];
 
 const STATUS_LABELS: Record<OfferStatus, string> = {
@@ -48,28 +34,60 @@ const STATUS_COLORS: Record<OfferStatus, string> = {
 };
 
 export function OfertasTab() {
-  const [offers, setOffers] = useState<Offer[]>(INITIAL_OFFERS);
+  const { offers: initialOffers, loading, setOffers } = useOffers();
+  const [offers, setLocalOffers] = useState<OfferRecord[]>([]);
   const [counterInputs, setCounterInputs] = useState<Record<string, string>>({});
 
-  const accept = (id: string) => setOffers((prev) => prev.map((o) => o.id === id ? { ...o, status: "aceptada" } : o));
-  const reject = (id: string) => setOffers((prev) => prev.map((o) => o.id === id ? { ...o, status: "rechazada" } : o));
+  const currentOffers: OfferRecord[] = offers.length > 0 ? offers : initialOffers;
+
+  const applyUpdate = (updater: (prev: Offer[]) => Offer[]) => {
+    const next = updater(currentOffers);
+    setLocalOffers(next);
+    setOffers(next);
+  };
+
+  const persistStatus = async (id: string, estado: OfferStatus, counterPrice?: number) => {
+    const target = currentOffers.find((offer) => offer.id === id);
+    if (!target?.recordId) return;
+    const supabase = createClient();
+    await supabase
+      .from("solicitudes_compra")
+      .update({
+        estado,
+        ...(counterPrice ? { precio_oferta: counterPrice } : {}),
+      })
+      .eq("id", target.recordId);
+  };
+
+  const accept = (id: string) => {
+    void persistStatus(id, "aceptada");
+    applyUpdate((prev) => prev.map((o) => o.id === id ? { ...o, status: "aceptada" } : o));
+  };
+  const reject = (id: string) => {
+    void persistStatus(id, "rechazada");
+    applyUpdate((prev) => prev.map((o) => o.id === id ? { ...o, status: "rechazada" } : o));
+  };
   const startCounter = (id: string, ask: number) => {
     setCounterInputs((prev) => ({ ...prev, [id]: ask.toString() }));
-    setOffers((prev) => prev.map((o) => o.id === id ? { ...o, status: "contraoferta" } : o));
+    applyUpdate((prev) => prev.map((o) => o.id === id ? { ...o, status: "contraoferta" } : o));
   };
   const sendCounter = (id: string) => {
     const val = parseFloat(counterInputs[id] || "0");
-    setOffers((prev) => prev.map((o) => o.id === id ? { ...o, status: "contra-enviada", counterPrice: val } : o));
+    void persistStatus(id, "contra-enviada", val);
+    applyUpdate((prev) => prev.map((o) => o.id === id ? { ...o, status: "contra-enviada", counterPrice: val } : o));
   };
 
-  const pending = offers.filter((o) => o.status === "pendiente" || o.status === "contraoferta");
-  const resolved = [...offers.filter((o) => o.status !== "pendiente" && o.status !== "contraoferta"), ...HISTORY];
+  const pending = currentOffers.filter((o) => o.status === "pendiente" || o.status === "contraoferta");
+  const resolved = [...currentOffers.filter((o) => o.status !== "pendiente" && o.status !== "contraoferta"), ...HISTORY];
 
   return (
     <div>
       {/* Pending offers */}
       <div className="mb-8">
         <SectionLabel n="N°01">Ofertas pendientes · {pending.length}</SectionLabel>
+        {loading && (
+          <ArtCard className="p-4 mb-3 text-sm text-[var(--ink)]/60">Cargando ofertas reales…</ArtCard>
+        )}
         {pending.length === 0 && (
           <ArtCard className="p-8 text-center text-[var(--ink)]/50">
             <HandHold size={32} className="mx-auto mb-2 text-[var(--ink)]/30" />
@@ -122,7 +140,7 @@ export function OfertasTab() {
                         >
                           Enviar <ArrowUpRight className="w-3 h-3" />
                         </button>
-                        <button onClick={() => setOffers((prev) => prev.map((of) => of.id === o.id ? { ...of, status: "pendiente" } : of))} className="px-4 py-2 rounded-full border-2 border-[var(--ink)] text-sm">
+                        <button onClick={() => applyUpdate((prev) => prev.map((of) => of.id === o.id ? { ...of, status: "pendiente" } : of))} className="px-4 py-2 rounded-full border-2 border-[var(--ink)] text-sm">
                           Cancelar
                         </button>
                       </div>

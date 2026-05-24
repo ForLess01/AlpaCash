@@ -7,28 +7,14 @@ import { ArtCard, SectionLabel } from "../../DashShell";
 import { FiberBall, StampSeal } from "../../../icons/AlpaIcons";
 import { useCart } from "@/lib/hooks/useCart";
 import type { DisplayLot } from "@/components/modals/LotDetailModal";
-
-type Lot = DisplayLot & { color: string; grade: "A+" | "A" | "B"; certified: boolean };
-
-const ALL_LOTS: Lot[] = [
-  { id: "AC-2048", cat: "Baby", color: "Blanco", origin: "Puno", lb: 120, price: 32.5, grade: "A", prod: "Asoc. Tinta", certified: true },
-  { id: "AC-2050", cat: "Súper Baby", color: "Beige", origin: "Cusco", lb: 90, price: 41.2, grade: "A+", prod: "Cabaña Sur", certified: true },
-  { id: "AC-2052", cat: "Fleece", color: "LF", origin: "Arequipa", lb: 260, price: 24.8, grade: "B", prod: "Coop. Maranganí", certified: false },
-  { id: "AC-2054", cat: "Baby", color: "Blanco", origin: "Puno", lb: 140, price: 32.0, grade: "A", prod: "Asoc. Llalli", certified: true },
-  { id: "AC-2060", cat: "Súper Baby", color: "Café", origin: "Cusco", lb: 70, price: 43.5, grade: "A+", prod: "Hacienda Inka", certified: true },
-  { id: "AC-2061", cat: "Baby", color: "Gris", origin: "Puno", lb: 110, price: 31.8, grade: "A", prod: "Comunidad Tinta", certified: false },
-  { id: "AC-2062", cat: "Médium", color: "Blanco", origin: "Apurímac", lb: 300, price: 19.5, grade: "B", prod: "Asoc. Challhuahuacho", certified: true },
-  { id: "AC-2063", cat: "Gruesa", color: "Negro", origin: "Arequipa", lb: 400, price: 13.5, grade: "B", prod: "Coop. Arequipa Sur", certified: false },
-  { id: "AC-2064", cat: "Baby", color: "Mosaico", origin: "Cusco", lb: 85, price: 34.0, grade: "A", prod: "Cabaña Norte", certified: true },
-  { id: "AC-2065", cat: "Súper Baby", color: "Blanco", origin: "Puno", lb: 65, price: 42.0, grade: "A+", prod: "Asoc. Tinta", certified: true },
-  { id: "AC-2066", cat: "Fleece", color: "Beige", origin: "Cusco", lb: 200, price: 23.5, grade: "B", prod: "Cabaña Sur", certified: false },
-  { id: "AC-2067", cat: "Baby", color: "Café", origin: "Apurímac", lb: 130, price: 31.0, grade: "A", prod: "Prod. Familiar Ccama", certified: true },
-];
+import { useMarketplaceLots } from "@/lib/hooks/useDashboardData";
+type Lot = DisplayLot & { color: string; grade: string; certified: boolean };
 
 type SortKey = "precio-asc" | "precio-desc" | "recientes" | "grado";
 
 export function MarketplaceTab({ onOpenLot }: { onOpenLot?: (lot: DisplayLot) => void }) {
   const { addItem, items } = useCart();
+  const { lots: allLots, loading } = useMarketplaceLots();
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("Todos");
   const [originFilter, setOriginFilter] = useState("Todos");
@@ -42,7 +28,7 @@ export function MarketplaceTab({ onOpenLot }: { onOpenLot?: (lot: DisplayLot) =>
   const grades = ["Todos", "A+", "A", "B"];
 
   const filtered = useMemo(() => {
-    let list = ALL_LOTS;
+    let list = allLots;
     if (search) list = list.filter((l) => l.id.toLowerCase().includes(search.toLowerCase()) || l.prod.toLowerCase().includes(search.toLowerCase()));
     if (catFilter !== "Todos") list = list.filter((l) => l.cat === catFilter);
     if (originFilter !== "Todos") list = list.filter((l) => l.origin === originFilter);
@@ -51,7 +37,7 @@ export function MarketplaceTab({ onOpenLot }: { onOpenLot?: (lot: DisplayLot) =>
     if (sort === "precio-desc") list = [...list].sort((a, b) => b.price - a.price);
     if (sort === "grado") list = [...list].sort((a, b) => (a.grade === "A+" ? 0 : a.grade === "A" ? 1 : 2) - (b.grade === "A+" ? 0 : b.grade === "A" ? 1 : 2));
     return list;
-  }, [search, catFilter, originFilter, gradeFilter, sort]);
+  }, [allLots, search, catFilter, originFilter, gradeFilter, sort]);
 
   const handleAdd = (l: Lot) => {
     addItem({ id: l.id, cat: l.cat, origin: l.origin, lb: l.lb, price: l.price, prod: l.prod, grade: l.grade });
@@ -96,6 +82,12 @@ export function MarketplaceTab({ onOpenLot }: { onOpenLot?: (lot: DisplayLot) =>
             ))}
           </div>
         </motion.div>
+      )}
+
+      {loading && (
+        <div className="mb-5 rounded-2xl border border-[var(--border)] bg-[var(--ivory)] px-4 py-3 text-sm text-[var(--teal-deep)]">
+          Cargando lotes reales del marketplace…
+        </div>
       )}
 
       <SectionLabel n="N°01">{filtered.length} lotes disponibles</SectionLabel>

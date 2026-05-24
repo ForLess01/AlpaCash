@@ -2,18 +2,26 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sprout, Factory, LayoutDashboard, Landmark, ArrowRight, User, MapPin, Building2 } from "lucide-react";
+import { Sprout, Factory, Landmark, ArrowRight, User, MapPin, Building2 } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { ROLE_TO_ROUTE, type Role } from "@/lib/supabase/types";
+import {
+  isLettersOnly,
+  isValidDni,
+  isValidRuc,
+  normalizeSpaces,
+  sanitizeAlphanumeric,
+  sanitizeDigits,
+  sanitizeLetters,
+} from "@/lib/forms/validation";
 
-const ROLE_OPTIONS: { id: Role; icon: typeof Sprout; label: string; desc: string }[] = [
+const ROLE_OPTIONS: { id: Exclude<Role, "admin">; icon: typeof Sprout; label: string; desc: string }[] = [
   { id: "productor", icon: Sprout, label: "Productor / Asociación", desc: "Publicás lotes y construís historial." },
   { id: "empresa", icon: Factory, label: "Comprador / Empresa", desc: "Buscás lotes trazables y gestionás compras." },
-  { id: "admin", icon: LayoutDashboard, label: "Administrador", desc: "Operás la plataforma y validás usuarios." },
   { id: "financiera", icon: Landmark, label: "Aliado financiero", desc: "Consultás reportes autorizados por productores." },
 ];
 
@@ -29,7 +37,7 @@ export function CompleteProfileForm({
   avatarUrl: string | null;
 }) {
   const router = useRouter();
-  const [role, setRole] = useState<Role>("productor");
+  const [role, setRole] = useState<Exclude<Role, "admin">>("productor");
   const [name, setName] = useState(fullName);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,9 +49,32 @@ export function CompleteProfileForm({
     e.preventDefault();
     setError(null);
 
-    if (!name.trim()) {
+    const normalizedName = normalizeSpaces(name);
+    if (!normalizedName || !isLettersOnly(normalizedName)) {
       setError("Necesitamos tu nombre completo para crear el perfil.");
       return;
+    }
+    if (role === "productor") {
+      const dni = sanitizeDigits(productorData.dni, 8);
+      if (dni && !isValidDni(dni)) {
+        setError("El DNI debe tener 8 dígitos.");
+        return;
+      }
+      if (productorData.region && !isLettersOnly(productorData.region)) {
+        setError("La región solo puede contener letras.");
+        return;
+      }
+      if (productorData.province && !isLettersOnly(productorData.province)) {
+        setError("La provincia solo puede contener letras.");
+        return;
+      }
+    }
+    if (role === "empresa" || role === "financiera") {
+      const ruc = sanitizeDigits(empresaData.ruc, 11);
+      if (ruc && !isValidRuc(ruc)) {
+        setError("El RUC debe tener 11 dígitos.");
+        return;
+      }
     }
 
     setLoading(true);
@@ -52,7 +83,7 @@ export function CompleteProfileForm({
 
       const { error: profileError } = await supabase.from("profiles").insert({
         id: userId,
-        nombre: name.trim(),
+        nombre: normalizedName,
         email,
         rol: role,
         avatar_url: avatarUrl,
@@ -67,11 +98,11 @@ export function CompleteProfileForm({
         const { error: e } = await supabase.from("productores").insert({
           profile_id: userId,
           codigo_productor: `AC-${Date.now().toString(36).toUpperCase()}`,
-          dni_ruc: productorData.dni || null,
-          nombre_asociacion: productorData.community || null,
-          comunidad: productorData.community || null,
-          provincia: productorData.province || null,
-          region: productorData.region || "Puno",
+          dni_ruc: sanitizeDigits(productorData.dni, 8) || null,
+          nombre_asociacion: normalizeSpaces(productorData.community) || null,
+          comunidad: normalizeSpaces(productorData.community) || null,
+          provincia: normalizeSpaces(productorData.province) || null,
+          region: normalizeSpaces(productorData.region) || "Puno",
         });
         if (e) {
           setError(`Perfil creado pero faltó guardar datos de productor: ${e.message}`);
@@ -80,10 +111,10 @@ export function CompleteProfileForm({
       } else if (role === "empresa") {
         const { error: e } = await supabase.from("empresas").insert({
           profile_id: userId,
-          ruc: empresaData.ruc || null,
-          razon_social: empresaData.razonSocial || name.trim(),
-          rubro: empresaData.sector || null,
-          direccion: empresaData.address || null,
+          ruc: sanitizeDigits(empresaData.ruc, 11) || null,
+          razon_social: normalizeSpaces(empresaData.razonSocial) || normalizedName,
+          rubro: normalizeSpaces(empresaData.sector) || null,
+          direccion: normalizeSpaces(empresaData.address) || null,
         });
         if (e) {
           setError(`Perfil creado pero faltó guardar datos de empresa: ${e.message}`);
@@ -92,8 +123,8 @@ export function CompleteProfileForm({
       } else if (role === "financiera") {
         const { error: e } = await supabase.from("entidades_financieras").insert({
           profile_id: userId,
-          razon_social: empresaData.razonSocial || name.trim(),
-          ruc: empresaData.ruc || null,
+          razon_social: normalizeSpaces(empresaData.razonSocial) || normalizedName,
+          ruc: sanitizeDigits(empresaData.ruc, 11) || null,
         });
         if (e) {
           setError(`Perfil creado pero faltó guardar datos de la entidad: ${e.message}`);
@@ -154,7 +185,7 @@ export function CompleteProfileForm({
             <Input
               id="nombre"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => setName(sanitizeLetters(e.target.value))}
               placeholder="Juana Quispe"
               className="mt-1.5 h-11 bg-white border-[var(--border)]"
               required
@@ -172,7 +203,7 @@ export function CompleteProfileForm({
                     placeholder="00000000"
                     className="pl-9 h-11 bg-white border-[var(--border)]"
                     value={productorData.dni}
-                    onChange={(e) => setProductorData((d) => ({ ...d, dni: e.target.value }))}
+                    onChange={(e) => setProductorData((d) => ({ ...d, dni: sanitizeDigits(e.target.value, 8) }))}
                   />
                 </div>
               </div>
@@ -183,7 +214,7 @@ export function CompleteProfileForm({
                   placeholder="Asoc. Tinta Alpaquera"
                   className="mt-1.5 h-11 bg-white border-[var(--border)]"
                   value={productorData.community}
-                  onChange={(e) => setProductorData((d) => ({ ...d, community: e.target.value }))}
+                  onChange={(e) => setProductorData((d) => ({ ...d, community: sanitizeAlphanumeric(e.target.value) }))}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -194,7 +225,7 @@ export function CompleteProfileForm({
                     placeholder="Puno"
                     className="mt-1.5 h-11 bg-white border-[var(--border)]"
                     value={productorData.region}
-                    onChange={(e) => setProductorData((d) => ({ ...d, region: e.target.value }))}
+                    onChange={(e) => setProductorData((d) => ({ ...d, region: sanitizeLetters(e.target.value) }))}
                   />
                 </div>
                 <div>
@@ -204,7 +235,7 @@ export function CompleteProfileForm({
                     placeholder="Lampa"
                     className="mt-1.5 h-11 bg-white border-[var(--border)]"
                     value={productorData.province}
-                    onChange={(e) => setProductorData((d) => ({ ...d, province: e.target.value }))}
+                    onChange={(e) => setProductorData((d) => ({ ...d, province: sanitizeLetters(e.target.value) }))}
                   />
                 </div>
               </div>
@@ -222,7 +253,7 @@ export function CompleteProfileForm({
                     placeholder="Textil Andina S.A.C."
                     className="pl-9 h-11 bg-white border-[var(--border)]"
                     value={empresaData.razonSocial}
-                    onChange={(e) => setEmpresaData((d) => ({ ...d, razonSocial: e.target.value }))}
+                    onChange={(e) => setEmpresaData((d) => ({ ...d, razonSocial: sanitizeAlphanumeric(e.target.value) }))}
                   />
                 </div>
               </div>
@@ -234,7 +265,7 @@ export function CompleteProfileForm({
                     placeholder="20XXXXXXXXX"
                     className="mt-1.5 h-11 bg-white border-[var(--border)]"
                     value={empresaData.ruc}
-                    onChange={(e) => setEmpresaData((d) => ({ ...d, ruc: e.target.value }))}
+                    onChange={(e) => setEmpresaData((d) => ({ ...d, ruc: sanitizeDigits(e.target.value, 11) }))}
                   />
                 </div>
                 {role === "empresa" && (
@@ -245,7 +276,7 @@ export function CompleteProfileForm({
                       placeholder="Textil"
                       className="mt-1.5 h-11 bg-white border-[var(--border)]"
                       value={empresaData.sector}
-                      onChange={(e) => setEmpresaData((d) => ({ ...d, sector: e.target.value }))}
+                      onChange={(e) => setEmpresaData((d) => ({ ...d, sector: sanitizeAlphanumeric(e.target.value) }))}
                     />
                   </div>
                 )}
@@ -260,7 +291,7 @@ export function CompleteProfileForm({
                       placeholder="Av. ..."
                       className="pl-9 h-11 bg-white border-[var(--border)]"
                       value={empresaData.address}
-                      onChange={(e) => setEmpresaData((d) => ({ ...d, address: e.target.value }))}
+                      onChange={(e) => setEmpresaData((d) => ({ ...d, address: sanitizeAlphanumeric(e.target.value) }))}
                     />
                   </div>
                 </div>

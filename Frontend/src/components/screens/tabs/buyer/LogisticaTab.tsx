@@ -3,21 +3,21 @@
 import { motion } from "motion/react";
 import { MapPinned, Truck, Warehouse } from "lucide-react";
 import { ArtCard, SectionLabel } from "../../DashShell";
-
-const shipments = [
-  { route: "Tinta → Cusco → Lima", lot: "AC-2048", progress: 82, state: "Centro de consolidación" },
-  { route: "Maranganí → Sicuani", lot: "AC-2052", progress: 55, state: "Pesaje de salida" },
-  { route: "Puno → Juliaca", lot: "AC-2065", progress: 31, state: "Recojo programado" },
-];
+import { useLogistics } from "@/lib/hooks/useDashboardData";
 
 export function LogisticaTab() {
+  const { shipments, loading } = useLogistics();
+  const activeRoutes = shipments.length;
+  const delivered = shipments.filter((shipment) => shipment.progress >= 100).length;
+  const fieldVehicles = shipments.filter((shipment) => shipment.progress > 0 && shipment.progress < 100).length;
+
   return (
     <div className="space-y-6">
       <div className="grid lg:grid-cols-3 gap-4">
         {[
-          { label: "Rutas activas", value: "9", icon: <MapPinned className="w-5 h-5" />, bg: "var(--gold)" },
-          { label: "Vehículos en campo", value: "14", icon: <Truck className="w-5 h-5" />, bg: "var(--mint)" },
-          { label: "Hubs operativos", value: "3", icon: <Warehouse className="w-5 h-5" />, bg: "var(--pink)" },
+          { label: "Rutas activas", value: String(activeRoutes), icon: <MapPinned className="w-5 h-5" />, bg: "var(--gold)" },
+          { label: "En movimiento", value: String(fieldVehicles), icon: <Truck className="w-5 h-5" />, bg: "var(--mint)" },
+          { label: "Entregas cerradas", value: String(delivered), icon: <Warehouse className="w-5 h-5" />, bg: "var(--pink)" },
         ].map((metric, index) => (
           <motion.div key={metric.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
             <ArtCard className="p-5">
@@ -33,9 +33,10 @@ export function LogisticaTab() {
 
       <div>
         <SectionLabel n="N°01">Seguimiento por lote</SectionLabel>
+        {loading && <ArtCard className="p-4 mb-4 text-sm text-[var(--ink)]/60">Cargando seguimiento logístico real…</ArtCard>}
         <div className="space-y-3">
           {shipments.map((shipment, index) => (
-            <ArtCard key={shipment.lot} className="p-4" rotate={index % 2 === 0 ? -0.2 : 0.2}>
+            <ArtCard key={shipment.id} className="p-4" rotate={index % 2 === 0 ? -0.2 : 0.2}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="font-display text-lg" style={{ fontWeight: 600 }}>{shipment.route}</div>
@@ -48,6 +49,7 @@ export function LogisticaTab() {
               </div>
             </ArtCard>
           ))}
+          {!loading && shipments.length === 0 && <ArtCard className="p-4 text-sm text-[var(--ink)]/60">Todavía no hay rutas registradas.</ArtCard>}
         </div>
       </div>
     </div>

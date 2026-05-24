@@ -1,6 +1,7 @@
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 import { ArrowLeft, ShieldCheck, BadgeCheck, Lock } from "lucide-react";
 import type { ReactNode } from "react";
+import Link from "next/link";
 
 export function AuthShell({
   children,
@@ -23,10 +24,10 @@ export function AuthShell({
           <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-[var(--teal-deep)]/80 hover:text-[var(--teal-deep)]">
             <ArrowLeft className="w-4 h-4" /> Volver
           </button>
-          <a href="#" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <img src="/ALPACASH.svg" alt="AlpaCash Logo" className="h-8 w-auto" />
             <span className="text-[var(--teal-deep)]" style={{ fontWeight: 600 }}>AlpaCash</span>
-          </a>
+          </Link>
         </div>
         <div className="flex-1 flex items-center justify-center py-12">
           <div className="w-full max-w-md">{children}</div>

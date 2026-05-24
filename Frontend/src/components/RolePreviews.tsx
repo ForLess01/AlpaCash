@@ -125,6 +125,7 @@ function PhoneChrome({ children }: { children: React.ReactNode }) {
 /* ============== Previews ============== */
 
 function ProducerPreview() {
+  const [ctaPressed, setCtaPressed] = useState(false);
   return (
     <div className="grid lg:grid-cols-12 gap-8 items-center">
       <div className="lg:col-span-7 order-2 lg:order-1">
@@ -146,9 +147,14 @@ function ProducerPreview() {
             </div>
             <div className="mt-1.5 text-[10px] text-[var(--ivory)]/70">4 de 6 hitos completados</div>
           </div>
-          <button className="mt-3 w-full py-3 rounded-2xl bg-[var(--terracotta)] text-white flex items-center justify-center gap-2 text-sm" style={{ fontWeight: 500 }}>
+          <button onClick={() => setCtaPressed(true)} className="mt-3 w-full py-3 rounded-2xl bg-[var(--terracotta)] text-white flex items-center justify-center gap-2 text-sm" style={{ fontWeight: 500 }}>
             <Plus className="w-4 h-4" /> Registrar nuevo lote
           </button>
+          {ctaPressed && (
+            <div className="mt-2 rounded-xl bg-white border border-[var(--border)] p-2 text-[10px] text-[var(--teal-deep)]">
+              El flujo de registro abre el asistente de nuevo lote en la experiencia real del productor.
+            </div>
+          )}
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
             {[
               { v: "3", l: "Activos" },

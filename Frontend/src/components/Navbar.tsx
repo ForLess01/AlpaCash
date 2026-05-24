@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Menu, X, Globe, ChevronDown } from "lucide-react";
 import { Button } from "./ui/button";
+import Link from "next/link";
 
 export function Navbar({ onLogin, onRegister, onMarketplace }: { onLogin?: () => void; onRegister?: () => void; onMarketplace?: () => void } = {}) {
   const [open, setOpen] = useState(false);
@@ -18,10 +19,10 @@ export function Navbar({ onLogin, onRegister, onMarketplace }: { onLogin?: () =>
   return (
     <header className="sticky top-0 z-40 bg-[var(--ivory)]/80 backdrop-blur-md border-b border-[var(--border)]">
       <div className="max-w-7xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
-        <a href="#" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <img src="/ALPACASH.svg" alt="AlpaCash Logo" className="h-9 w-auto" />
           <span className="text-[var(--teal-deep)] tracking-tight" style={{ fontWeight: 600 }}>AlpaCash</span>
-        </a>
+        </Link>
 
         <nav className="hidden lg:flex items-center gap-7">
           {links.map((l) =>

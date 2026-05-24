@@ -130,7 +130,7 @@ export function PublicMarketplace({ onExplore }: { onExplore?: () => void }) {
                   </div>
                 </div>
 
-                <button className="mt-4 w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-full bg-[var(--ivory-2)] hover:bg-[var(--gold-soft)]/40 text-[var(--teal-deep)] text-sm transition-colors">
+                <button onClick={onExplore} className="mt-4 w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-full bg-[var(--ivory-2)] hover:bg-[var(--gold-soft)]/40 text-[var(--teal-deep)] text-sm transition-colors">
                   <BadgeCheck className="w-4 h-4" /> Ver información general
                 </button>
               </div>

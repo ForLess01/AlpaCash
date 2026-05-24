@@ -1,20 +1,18 @@
 "use client";
 
 import { ArtCard, SectionLabel } from "../../DashShell";
-
-const users = [
-  { name: "Juana Quispe", role: "Productor", status: "Verificado" },
-  { name: "Textiles Andina", role: "Comprador", status: "Activo" },
-  { name: "Caja Andina", role: "Aliado financiero", status: "Pendiente" },
-];
+import { useAdminUsers } from "@/lib/hooks/useDashboardData";
 
 export function UsersTab() {
+  const { users, loading } = useAdminUsers();
+
   return (
     <div>
       <SectionLabel n="N°01">Usuarios de la red</SectionLabel>
+      {loading && <ArtCard className="p-4 mb-3 text-sm text-[var(--ink)]/60">Cargando usuarios reales…</ArtCard>}
       <div className="space-y-3">
         {users.map((user) => (
-          <ArtCard key={user.name} className="p-4 flex items-center justify-between gap-3">
+          <ArtCard key={user.id} className="p-4 flex items-center justify-between gap-3">
             <div>
               <div className="font-display text-lg" style={{ fontWeight: 600 }}>{user.name}</div>
               <div className="text-xs text-[var(--ink)]/60">{user.role}</div>

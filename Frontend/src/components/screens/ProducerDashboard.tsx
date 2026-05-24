@@ -10,13 +10,14 @@ import { EsquilaTab } from "./tabs/producer/EsquilaTab";
 import { PagosTab } from "./tabs/producer/PagosTab";
 import { CapacitacionTab } from "./tabs/producer/CapacitacionTab";
 import { FinanciamientoTab } from "./tabs/producer/FinanciamientoTab";
+import type { DisplayLot } from "../modals/LotDetailModal";
 
 const trend = Array.from({ length: 14 }).map((_, i) => ({ d: `D${i + 1}`, v: +(28 + Math.sin(i / 2) * 2 + i * 0.3).toFixed(2) }));
 
 const myLots = [
-  { id: "AC-2048", cat: "Baby", color: "Blanco", lb: 120, price: 32.5, st: "Listado" },
-  { id: "AC-2049", cat: "Fleece", color: "LF", lb: 240, price: 24.1, st: "En oferta" },
-  { id: "AC-2051", cat: "Súper Baby", color: "Beige", lb: 80, price: 41.0, st: "Vendido" },
+  { id: "AC-2048", cat: "Baby", color: "Blanco", origin: "Puno", lb: 120, price: 32.5, st: "Listado" },
+  { id: "AC-2049", cat: "Fleece", color: "LF", origin: "Cusco", lb: 240, price: 24.1, st: "En oferta" },
+  { id: "AC-2051", cat: "Súper Baby", color: "Beige", origin: "Arequipa", lb: 80, price: 41.0, st: "Vendido" },
 ];
 
 const offers = [
@@ -24,7 +25,7 @@ const offers = [
   { buyer: "Pacomarca Export", lot: "AC-2048", offer: "S/ 33.00", lb: "120", time: "hace 1 h" },
 ];
 
-export function ProducerDashboard({ onBack, onOpenLot, onNewLot }: { onBack: () => void; onOpenLot: () => void; onNewLot: () => void }) {
+export function ProducerDashboard({ onBack, onOpenLot, onNewLot }: { onBack: () => void; onOpenLot: (lot?: DisplayLot) => void; onNewLot: () => void }) {
   const [tab, setTab] = useState("inicio");
   const nav = [
     { key: "inicio", label: "Inicio", icon: <AlpacaHead size={18} /> },
@@ -163,7 +164,7 @@ export function ProducerDashboard({ onBack, onOpenLot, onNewLot }: { onBack: () 
             {myLots.map((l, i) => (
               <motion.button
                 key={l.id}
-                onClick={onOpenLot}
+                onClick={() => onOpenLot?.({ id: l.id, cat: l.cat, color: l.color, origin: l.origin, lb: l.lb, price: l.price, prod: "Productor verificado" })}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.06 }}
@@ -206,10 +207,10 @@ export function ProducerDashboard({ onBack, onOpenLot, onNewLot }: { onBack: () 
                   </div>
                 </div>
                 <div className="flex gap-2 mt-3">
-                  <button className="flex-1 px-4 py-2 rounded-full bg-[var(--ink)] text-[var(--ivory)] text-sm flex items-center justify-center gap-2" style={{ fontWeight: 500 }}>
+                  <button onClick={() => setTab("ofertas")} className="flex-1 px-4 py-2 rounded-full bg-[var(--ink)] text-[var(--ivory)] text-sm flex items-center justify-center gap-2" style={{ fontWeight: 500 }}>
                     Aceptar <ArrowUpRight className="w-3 h-3" />
                   </button>
-                  <button className="flex-1 px-4 py-2 rounded-full border-2 border-[var(--ink)] text-sm" style={{ fontWeight: 500 }}>Contraoferta</button>
+                  <button onClick={() => setTab("ofertas")} className="flex-1 px-4 py-2 rounded-full border-2 border-[var(--ink)] text-sm" style={{ fontWeight: 500 }}>Contraoferta</button>
                 </div>
               </ArtCard>
             ))}

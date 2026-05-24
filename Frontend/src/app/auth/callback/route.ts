@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/auth/complete-profile`);
   }
 
-  if (profile.estado === "suspendido" || profile.estado === "rechazado") {
+  if (profile.estado === "pendiente" || profile.estado === "suspendido" || profile.estado === "rechazado") {
     await supabase.auth.signOut();
     return NextResponse.redirect(`${origin}/auth/login?error=cuenta-${profile.estado}`);
   }

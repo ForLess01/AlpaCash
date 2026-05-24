@@ -4,7 +4,6 @@ import {
   createContext,
   useContext,
   useState,
-  useEffect,
   useCallback,
   type ReactNode,
 } from "react";
@@ -33,16 +32,15 @@ const CartContext = createContext<CartContextType | null>(null);
 const STORAGE_KEY = "alpacash_cart";
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartLot[]>([]);
-
-  useEffect(() => {
+  const [items, setItems] = useState<CartLot[]>(() => {
     try {
-      const stored = sessionStorage.getItem(STORAGE_KEY);
-      if (stored) setItems(JSON.parse(stored));
+      if (typeof window === "undefined") return [];
+      const stored = window.sessionStorage.getItem(STORAGE_KEY);
+      return stored ? (JSON.parse(stored) as CartLot[]) : [];
     } catch {
-      // sessionStorage not available
+      return [];
     }
-  }, []);
+  });
 
   const persist = useCallback((next: CartLot[]) => {
     try {
@@ -50,7 +48,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } catch {
       // sessionStorage not available
     }
-    setItems(next);
   }, []);
 
   const addItem = useCallback(
@@ -77,6 +74,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   const clearCart = useCallback(() => {
+    setItems([]);
     persist([]);
   }, [persist]);
 

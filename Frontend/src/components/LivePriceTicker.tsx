@@ -24,6 +24,7 @@ const SECONDARY = [
 ];
 
 export function LivePriceTicker() {
+  const [range, setRange] = useState("1D");
   const base = 32.5;
   const [data, setData] = useState<Point[]>(() => seed(40, base));
   const [tick, setTick] = useState(0);
@@ -173,11 +174,12 @@ export function LivePriceTicker() {
         {/* timeframe toggles + status */}
         <div className="lg:col-span-2 flex lg:flex-col gap-2 lg:items-end">
           <div className="flex gap-1 bg-white/5 rounded-full p-1 text-[11px] border border-white/10">
-            {["1H", "1D", "1S", "1M", "1A"].map((t, i) => (
+            {["1H", "1D", "1S", "1M", "1A"].map((t) => (
               <button
                 key={t}
-                className={`px-2.5 py-1 rounded-full transition-colors ${i === 1 ? "bg-[var(--gold)] text-[var(--teal-deep)]" : "text-[var(--ivory)]/70 hover:text-[var(--ivory)]"}`}
-                style={{ fontWeight: i === 1 ? 600 : 400 }}
+                onClick={() => setRange(t)}
+                className={`px-2.5 py-1 rounded-full transition-colors ${range === t ? "bg-[var(--gold)] text-[var(--teal-deep)]" : "text-[var(--ivory)]/70 hover:text-[var(--ivory)]"}`}
+                style={{ fontWeight: range === t ? 600 : 400 }}
               >
                 {t}
               </button>

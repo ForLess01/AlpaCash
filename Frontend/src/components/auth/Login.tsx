@@ -6,11 +6,13 @@ import { AuthShell } from "./AuthShell";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Mail, Lock, Eye, EyeOff, Fingerprint } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { ROLE_TO_ROUTE } from "@/lib/supabase/types";
 import type { Role } from "@/lib/supabase/types";
 import { getSupabaseEnv } from "@/lib/supabase/env";
+import { getAuthCallbackUrl } from "@/lib/supabase/redirect";
+import { isValidEmail } from "@/lib/forms/validation";
 
 const VALID_ROLES: Role[] = ["productor", "empresa", "admin", "financiera"];
 
@@ -23,7 +25,28 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
   const router = useRouter();
   const searchParams = useSearchParams();
   const env = getSupabaseEnv();
-  const configError = searchParams.get("error") === "supabase-config" || !env.isConfigured;
+  const authErrorCode = searchParams.get("error");
+  const registered = searchParams.get("registered") === "1";
+  const configError = authErrorCode === "supabase-config" || !env.isConfigured;
+
+  const authMessage = registered
+    ? "Cuenta creada. Revisá tu correo para verificarla y esperá la activación del equipo antes de ingresar."
+    : authErrorCode === "cuenta-pendiente"
+      ? "Tu cuenta existe pero todavía está pendiente de activación."
+      : authErrorCode === "cuenta-suspendido"
+        ? "Tu cuenta está suspendida. Contactá al equipo de AlpaCash."
+        : authErrorCode === "cuenta-rechazado"
+          ? "Tu cuenta fue rechazada. Contactá al equipo de AlpaCash."
+          : authErrorCode === "callback_failed"
+            ? "Falló la autenticación con Google. Intentá de nuevo."
+            : authErrorCode === "missing_code"
+              ? "Faltó el código de autenticación al volver desde Google."
+              : authErrorCode === "no_user"
+                ? "No pudimos recuperar tu usuario luego del login."
+                : authErrorCode === "no-profile"
+                  ? "Tu cuenta necesita completar perfil antes de ingresar."
+                  : null;
+
 
   async function handleGoogle() {
     setError(null);
@@ -34,10 +57,11 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
     setLoading(true);
     try {
       const supabase = createClient();
+      const redirectTo = getAuthCallbackUrl();
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          ...(redirectTo ? { redirectTo } : {}),
           skipBrowserRedirect: true,
         },
       });
@@ -54,6 +78,37 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
       window.location.assign(data.url);
     } catch (err) {
       setError(err instanceof Error ? `Error: ${err.message}` : "Error inesperado con Google.");
+      setLoading(false);
+    }
+  }
+
+  async function handlePasswordReset() {
+    setError(null);
+
+    if (!env.isConfigured) {
+      setError("Falta configurar Supabase en Vercel o en Frontend/.env.local.");
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setError("Ingresá tu correo para enviarte el enlace de recuperación.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const redirectTo = getAuthCallbackUrl();
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        ...(redirectTo ? { redirectTo } : {}),
+      });
+
+      if (resetError) {
+        setError(`No se pudo enviar la recuperación: ${resetError.message}`);
+        return;
+      }
+
+      setError("Te enviamos un enlace de recuperación a tu correo.");
+    } finally {
       setLoading(false);
     }
   }
@@ -93,6 +148,12 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
         return;
       }
 
+      if (profile.estado === "pendiente") {
+        await supabase.auth.signOut();
+        setError("Tu cuenta todavía está pendiente de activación. Revisá tu correo y esperá la validación del equipo.");
+        return;
+      }
+
       if (profile.estado === "suspendido" || profile.estado === "rechazado") {
         await supabase.auth.signOut();
         setError(`Tu cuenta está ${profile.estado}. Contactá al equipo para reactivarla.`);
@@ -126,7 +187,7 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
 
         <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
           <div>
-            <Label htmlFor="email" className="text-[var(--teal-deep)]">Correo o DNI</Label>
+            <Label htmlFor="email" className="text-[var(--teal-deep)]">Correo</Label>
             <div className="relative mt-1.5">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]" />
               <Input
@@ -144,7 +205,7 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
           <div>
             <div className="flex items-center justify-between">
               <Label htmlFor="pass" className="text-[var(--teal-deep)]">Contraseña</Label>
-              <button type="button" className="text-xs text-[var(--terracotta)] hover:underline">¿Olvidaste?</button>
+              <button type="button" onClick={handlePasswordReset} className="text-xs text-[var(--terracotta)] hover:underline">¿Olvidaste?</button>
             </div>
             <div className="relative mt-1.5">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]" />
@@ -167,15 +228,18 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
             <p className="text-sm text-[var(--terracotta)] bg-[var(--pink)]/30 rounded-xl px-4 py-3">{error}</p>
           )}
 
+          {!error && authMessage && (
+            <p className="text-sm text-[var(--teal-deep)] bg-[var(--mint)]/30 rounded-xl px-4 py-3">
+              {authMessage}
+            </p>
+          )}
+
           {configError && !error && (
             <p className="text-sm text-[var(--terracotta)] bg-[var(--pink)]/30 rounded-xl px-4 py-3">
               Supabase todavía no está configurado. En Vercel cargá <code>NEXT_PUBLIC_SUPABASE_URL</code> y <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>.
             </p>
           )}
 
-          <label className="flex items-center gap-2 text-sm text-[var(--teal-deep)]/80">
-            <input type="checkbox" className="rounded border-[var(--border)]" /> Mantener sesión iniciada
-          </label>
 
           <Button
             type="submit"
@@ -190,20 +254,15 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
             <span className="absolute left-1/2 -translate-x-1/2 -top-2.5 bg-[var(--ivory)] px-3 text-xs text-[var(--muted-foreground)]">o continúa con</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Button type="button" variant="outline" className="h-11 rounded-full border-[var(--border)] bg-white text-[var(--teal-deep)]">
-              <Fingerprint className="w-4 h-4 mr-2" /> Identificación
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleGoogle}
-              disabled={loading || !env.isConfigured}
-              className="h-11 rounded-full border-[var(--border)] bg-white text-[var(--teal-deep)] disabled:opacity-60"
-            >
-              <Mail className="w-4 h-4 mr-2" /> {loading ? "Conectando…" : "Google"}
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleGoogle}
+            disabled={loading || !env.isConfigured}
+            className="w-full h-11 rounded-full border-[var(--border)] bg-white text-[var(--teal-deep)] disabled:opacity-60"
+          >
+            <Mail className="w-4 h-4 mr-2" /> {loading ? "Conectando…" : "Continuar con Google"}
+          </Button>
         </form>
 
         <p className="mt-8 text-center text-sm text-[var(--teal-deep)]/80">

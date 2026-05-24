@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { ArrowLeft, Bell, Search } from "lucide-react";
-import { PendingBanner } from "../auth/PendingBanner";
+import { useNotifications } from "@/lib/hooks/useDashboardData";
 
 export function DashShell({
   role,
@@ -20,11 +20,13 @@ export function DashShell({
   children: ReactNode;
   sidebar?: ReactNode;
 }) {
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notifications = useNotifications();
   return (
     <div className="min-h-screen bg-[var(--ivory)] text-[var(--ink)]">
       <div className="absolute inset-0 grain pointer-events-none opacity-40" />
 
-      <PendingBanner />
 
       {/* Top bar */}
       <header className="sticky top-0 z-40 bg-[var(--ivory)]/90 backdrop-blur border-b-2 border-[var(--ink)]/10">
@@ -49,6 +51,7 @@ export function DashShell({
             <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--paper)] border-2 border-[var(--ink)]/10 w-full">
               <Search className="w-4 h-4 text-[var(--ink)]/50" />
               <input
+                onFocus={() => setSearchOpen(true)}
                 placeholder="Buscar lotes, productores, vouchers…"
                 className="bg-transparent outline-none text-sm flex-1"
               />
@@ -57,7 +60,7 @@ export function DashShell({
           </div>
 
           <div className="flex items-center gap-2">
-            <button className="relative w-10 h-10 rounded-full bg-[var(--paper)] border-2 border-[var(--ink)]/10 flex items-center justify-center">
+            <button onClick={() => setNotificationsOpen((prev) => !prev)} className="relative w-10 h-10 rounded-full bg-[var(--paper)] border-2 border-[var(--ink)]/10 flex items-center justify-center">
               <Bell className="w-4 h-4" />
               <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[var(--terracotta)] border-2 border-[var(--ivory)]" />
             </button>
@@ -93,6 +96,28 @@ export function DashShell({
       </motion.div>
 
       <div className="max-w-[1500px] mx-auto px-5 sm:px-8 pb-20 relative">
+        {searchOpen && (
+          <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--ivory)] px-4 py-3 text-sm text-[var(--teal-deep)]">
+            Búsqueda contextual habilitada. Escribí términos clave para filtrar lotes, productores o vouchers dentro del dashboard.
+          </div>
+        )}
+        {notificationsOpen && (
+          <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--ivory)] px-4 py-3 text-sm text-[var(--teal-deep)]">
+            <div className="font-medium mb-2">Notificaciones recientes</div>
+            <div className="space-y-2">
+              {notifications.length === 0 ? (
+                <div>Sin notificaciones nuevas.</div>
+              ) : (
+                notifications.map((item) => (
+                  <div key={item.id}>
+                    <div className="font-medium">{item.title}</div>
+                    <div className="text-[var(--ink)]/70">{item.body}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
         <div className={sidebar ? "grid lg:grid-cols-[260px_1fr] gap-8" : ""}>
           {sidebar && <aside className="hidden lg:block">{sidebar}</aside>}
           <div>{children}</div>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { motion, AnimatePresence } from "motion/react";
 import { X, Heart, ShoppingCart, CheckCircle2 } from "lucide-react";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
@@ -32,6 +34,7 @@ export function LotDetailModal({ open, onClose, lot }: { open: boolean; onClose:
   const item = lot ?? fallbackLot;
   const { addItem, items } = useCart();
   const added = items.some((cartItem) => cartItem.id === item.id);
+  const [favorite, setFavorite] = useState(false);
 
   const handleAdd = () => {
     addItem({
@@ -146,7 +149,7 @@ export function LotDetailModal({ open, onClose, lot }: { open: boolean; onClose:
                       <button onClick={handleAdd} disabled={added} className="flex-1 px-5 py-3.5 rounded-full bg-[var(--ink)] text-[var(--ivory)] flex items-center justify-center gap-2 disabled:opacity-60" style={{ fontWeight: 500 }}>
                         {added ? <><CheckCircle2 className="w-4 h-4" /> Añadido</> : <><ShoppingCart className="w-4 h-4" /> Añadir al carrito</>}
                       </button>
-                      <button className="px-4 py-3.5 rounded-full border-2 border-[var(--ink)]">
+                      <button onClick={() => setFavorite((prev: boolean) => !prev)} className={`px-4 py-3.5 rounded-full border-2 border-[var(--ink)] ${favorite ? "bg-[var(--terracotta)] text-white" : ""}`}>
                         <Heart className="w-4 h-4" />
                       </button>
                     </div>

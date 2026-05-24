@@ -5,28 +5,9 @@ import { motion } from "motion/react";
 import { Plus, Filter, Edit2, Archive, ExternalLink } from "lucide-react";
 import { ArtCard, SectionLabel } from "../../DashShell";
 import { FiberBall, LotTag, ChartSparkle, ReceiptPaper } from "../../../icons/AlpaIcons";
-
-type Lot = {
-  id: string;
-  cat: string;
-  color: string;
-  lb: number;
-  price: number;
-  st: "Activo" | "En oferta" | "Vendido" | "Borrador";
-  origin: string;
-  esquila: string;
-};
-
-const LOTS: Lot[] = [
-  { id: "AC-2048", cat: "Baby", color: "Blanco", lb: 120, price: 32.5, st: "En oferta", origin: "Tinta, Puno", esquila: "May 2026" },
-  { id: "AC-2049", cat: "Fleece", color: "LF", lb: 240, price: 24.1, st: "Activo", origin: "Tinta, Puno", esquila: "May 2026" },
-  { id: "AC-2051", cat: "Súper Baby", color: "Beige", lb: 80, price: 41.0, st: "Vendido", origin: "Cabaña Sur", esquila: "Abr 2026" },
-  { id: "AC-2052", cat: "Médium", color: "Café", lb: 160, price: 18.5, st: "Activo", origin: "Tinta, Puno", esquila: "May 2026" },
-  { id: "AC-2053", cat: "Baby", color: "Gris", lb: 95, price: 31.0, st: "Borrador", origin: "Asoc. Llalli", esquila: "Jun 2026" },
-  { id: "AC-2054", cat: "Gruesa", color: "Negro", lb: 320, price: 14.0, st: "Vendido", origin: "Tinta, Puno", esquila: "Mar 2026" },
-  { id: "AC-2055", cat: "Súper Baby", color: "Blanco", lb: 60, price: 43.0, st: "Activo", origin: "Cabaña Sur", esquila: "Jun 2026" },
-  { id: "AC-2056", cat: "Fleece", color: "Mosaico", lb: 200, price: 22.0, st: "En oferta", origin: "Tinta, Puno", esquila: "May 2026" },
-];
+import { useProducerLots } from "@/lib/hooks/useDashboardData";
+import type { DisplayLot } from "@/components/modals/LotDetailModal";
+import { createClient } from "@/lib/supabase/client";
 
 type Filter = "Todos" | "Activo" | "En oferta" | "Vendido" | "Borrador";
 
@@ -37,16 +18,43 @@ const ST_COLORS: Record<string, string> = {
   "Borrador": "bg-[var(--paper)] border-[var(--ink)]/30",
 };
 
-export function LotesTab({ onNewLot, onOpenLot }: { onNewLot?: () => void; onOpenLot?: () => void }) {
+export function LotesTab({ onNewLot, onOpenLot }: { onNewLot?: () => void; onOpenLot?: (lot?: DisplayLot) => void }) {
   const [filter, setFilter] = useState<Filter>("Todos");
+  const { lots, loading, setLots } = useProducerLots();
+  const [message, setMessage] = useState<string | null>(null);
 
-  const filtered = filter === "Todos" ? LOTS : LOTS.filter((l) => l.st === filter);
+  const filtered = filter === "Todos" ? lots : lots.filter((l) => l.st === filter);
   const stats = [
-    { l: "Total lotes", v: LOTS.length.toString(), icon: <LotTag size={18} />, bg: "var(--gold-soft)" },
-    { l: "En mercado", v: LOTS.filter((l) => l.st === "En oferta" || l.st === "Activo").length.toString(), icon: <FiberBall size={18} />, bg: "var(--mint)" },
-    { l: "Vendidos este mes", v: LOTS.filter((l) => l.st === "Vendido").length.toString(), icon: <ChartSparkle size={18} />, bg: "var(--pink)" },
+    { l: "Total lotes", v: lots.length.toString(), icon: <LotTag size={18} />, bg: "var(--gold-soft)" },
+    { l: "En mercado", v: lots.filter((l) => l.st === "En oferta" || l.st === "Activo").length.toString(), icon: <FiberBall size={18} />, bg: "var(--mint)" },
+    { l: "Vendidos este mes", v: lots.filter((l) => l.st === "Vendido").length.toString(), icon: <ChartSparkle size={18} />, bg: "var(--pink)" },
     { l: "Ingreso total", v: "S/ 12,840", icon: <ReceiptPaper size={18} />, bg: "var(--gold)" },
   ];
+
+  const handleEdit = (lotId: string) => {
+    const target = lots.find((lot) => lot.id === lotId);
+    if (!target?.recordId) return;
+    const supabase = createClient();
+    void supabase
+      .from("lotes_fibra")
+      .update({ estado: "disponible" })
+      .eq("id", target.recordId);
+    setLots((prev) => prev.map((lot) => lot.id === lotId ? { ...lot, st: "Activo" } : lot));
+    setMessage(`Lote ${lotId} actualizado. Si estaba en borrador, ya quedó activo.`);
+  };
+
+  const handleArchive = (lotId: string) => {
+    const target = lots.find((lot) => lot.id === lotId);
+    if (target?.recordId) {
+      const supabase = createClient();
+      void supabase
+        .from("lotes_fibra")
+        .update({ estado: "archivado" })
+        .eq("id", target.recordId);
+    }
+    setLots((prev) => prev.filter((lot) => lot.id !== lotId));
+    setMessage(`Lote ${lotId} archivado y removido del panel activo.`);
+  };
 
   return (
     <div>
@@ -64,6 +72,12 @@ export function LotesTab({ onNewLot, onOpenLot }: { onNewLot?: () => void; onOpe
           </motion.div>
         ))}
       </div>
+
+      {loading && (
+        <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--ivory)] px-4 py-3 text-sm text-[var(--teal-deep)]">
+          Cargando lotes reales desde Supabase…
+        </div>
+      )}
 
       {/* Header row */}
       <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
@@ -89,6 +103,12 @@ export function LotesTab({ onNewLot, onOpenLot }: { onNewLot?: () => void; onOpe
           </button>
         </div>
       </div>
+
+      {message && (
+        <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--ivory)] px-4 py-3 text-sm text-[var(--teal-deep)]">
+          {message}
+        </div>
+      )}
 
       {/* Lots grid */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -120,15 +140,15 @@ export function LotesTab({ onNewLot, onOpenLot }: { onNewLot?: () => void; onOpe
               </div>
               <div className="mt-3 pt-3 border-t-2 border-dashed border-[var(--ink)]/10 flex items-center gap-2">
                 <button
-                  onClick={onOpenLot}
+                  onClick={() => onOpenLot?.({ id: l.id, cat: l.cat, color: l.color, origin: l.origin, lb: l.lb, price: l.price, prod: "Mi lote", grade: l.st })}
                   className="flex-1 py-1.5 rounded-full border-2 border-[var(--ink)]/20 text-xs flex items-center justify-center gap-1 hover:bg-[var(--paper)] transition-colors"
                 >
                   <ExternalLink className="w-3 h-3" /> Ver
                 </button>
-                <button className="flex-1 py-1.5 rounded-full border-2 border-[var(--ink)]/20 text-xs flex items-center justify-center gap-1 hover:bg-[var(--paper)] transition-colors">
+                <button onClick={() => handleEdit(l.id)} className="flex-1 py-1.5 rounded-full border-2 border-[var(--ink)]/20 text-xs flex items-center justify-center gap-1 hover:bg-[var(--paper)] transition-colors">
                   <Edit2 className="w-3 h-3" /> Editar
                 </button>
-                <button className="p-1.5 rounded-full border-2 border-[var(--ink)]/20 hover:bg-[var(--paper)] transition-colors">
+                <button onClick={() => handleArchive(l.id)} className="p-1.5 rounded-full border-2 border-[var(--ink)]/20 hover:bg-[var(--paper)] transition-colors">
                   <Archive className="w-3 h-3" />
                 </button>
               </div>

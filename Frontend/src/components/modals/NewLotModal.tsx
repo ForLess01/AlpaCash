@@ -5,6 +5,13 @@ import { motion, AnimatePresence } from "motion/react";
 import { X, Camera, ArrowRight, Check, AlertTriangle } from "lucide-react";
 import { ScaleBalance, FiberBall, StampSeal, LotTag } from "../icons/AlpaIcons";
 import { createClient } from "@/lib/supabase/client";
+import {
+  isLettersOnly,
+  normalizeSpaces,
+  sanitizeAlphanumeric,
+  sanitizeDecimal,
+  sanitizeLetters,
+} from "@/lib/forms/validation";
 
 type Categoria = { id: string; nombre: string; nivel_calidad: number | null };
 
@@ -100,6 +107,10 @@ export function NewLotModal({ open, onClose }: { open: boolean; onClose: () => v
       if (!categoriaId) return "Elegí una categoría.";
       const p = Number(precio);
       if (!precio || isNaN(p) || p <= 0) return "Ingresá un precio por libra válido.";
+      if (color && !isLettersOnly(color)) return "El color solo puede contener letras.";
+      if (ubicacion && !/^[A-Za-zÁÉÍÓÚáéíóúÑñÜü\s,.'-]+$/.test(normalizeSpaces(ubicacion))) {
+        return "La ubicación solo puede contener letras y separadores simples.";
+      }
     }
     return null;
   }
@@ -127,9 +138,9 @@ export function NewLotModal({ open, onClose }: { open: boolean; onClose: () => v
         codigo_lote: codigo,
         peso_libras: pesoLb,
         peso_disponible: pesoLb,
-        color: color || null,
+        color: normalizeSpaces(color) || null,
         precio_por_libra: precioLb,
-        ubicacion_general: ubicacion || null,
+        ubicacion_general: normalizeSpaces(ubicacion) || null,
         fecha_esquila: fechaEsquila || null,
         estado: "disponible",
       });
@@ -208,7 +219,7 @@ export function NewLotModal({ open, onClose }: { open: boolean; onClose: () => v
                   {step === 0 && (
                     <div className="mt-4 aspect-video rounded-xl border-2 border-dashed border-[var(--ink)]/30 flex flex-col items-center justify-center gap-2 bg-[var(--ivory)]">
                       <Camera className="w-8 h-8 text-[var(--ink)]/40" />
-                      <div className="text-xs text-[var(--ink)]/60">Subida de foto disponible próximamente. Por ahora podés continuar.</div>
+                      <div className="text-xs text-[var(--ink)]/60">La foto del lote es opcional en esta versión. Podés continuar y publicar con los datos comerciales.</div>
                     </div>
                   )}
 
@@ -222,7 +233,7 @@ export function NewLotModal({ open, onClose }: { open: boolean; onClose: () => v
                         step="0.1"
                         min="0"
                         value={peso}
-                        onChange={(e) => setPeso(e.target.value)}
+                        onChange={(e) => setPeso(sanitizeDecimal(e.target.value, 1))}
                         placeholder="120.0"
                         className="w-full bg-transparent outline-none font-display text-4xl mt-1"
                         style={{ fontWeight: 700 }}
@@ -255,7 +266,7 @@ export function NewLotModal({ open, onClose }: { open: boolean; onClose: () => v
                           <input
                             id="color"
                             value={color}
-                            onChange={(e) => setColor(e.target.value)}
+                            onChange={(e) => setColor(sanitizeLetters(e.target.value))}
                             placeholder="Blanco / Beige / Marrón"
                             className="mt-1 w-full p-3 rounded-xl bg-[var(--ivory)] border border-[var(--ink)]/15 outline-none"
                             style={{ fontWeight: 600 }}
@@ -270,7 +281,7 @@ export function NewLotModal({ open, onClose }: { open: boolean; onClose: () => v
                             step="0.01"
                             min="0"
                             value={precio}
-                            onChange={(e) => setPrecio(e.target.value)}
+                            onChange={(e) => setPrecio(sanitizeDecimal(e.target.value))}
                             placeholder="32.50"
                             className="mt-1 w-full p-3 rounded-xl bg-[var(--ivory)] border border-[var(--ink)]/15 outline-none"
                             style={{ fontWeight: 600 }}
@@ -283,7 +294,7 @@ export function NewLotModal({ open, onClose }: { open: boolean; onClose: () => v
                         <input
                           id="ubic"
                           value={ubicacion}
-                          onChange={(e) => setUbicacion(e.target.value)}
+                          onChange={(e) => setUbicacion(sanitizeAlphanumeric(e.target.value))}
                           placeholder="Tinta, Cusco"
                           className="mt-1 w-full p-3 rounded-xl bg-[var(--ivory)] border border-[var(--ink)]/15 outline-none"
                           style={{ fontWeight: 600 }}

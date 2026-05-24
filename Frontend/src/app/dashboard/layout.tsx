@@ -17,5 +17,19 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     redirect("/auth/login");
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("estado")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile) {
+    redirect("/auth/complete-profile");
+  }
+
+  if (profile.estado === "pendiente" || profile.estado === "suspendido" || profile.estado === "rechazado") {
+    redirect(`/auth/login?error=cuenta-${profile.estado}`);
+  }
+
   return <>{children}</>;
 }

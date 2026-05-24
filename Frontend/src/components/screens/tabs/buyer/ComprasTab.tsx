@@ -1,23 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "motion/react";
 import { ArrowUpRight, BadgeCheck, FileText, PackageCheck } from "lucide-react";
 import { ArtCard, SectionLabel } from "../../DashShell";
-
-const orders = [
-  { id: "PO-2104", supplier: "Asoc. Tinta", total: "S/ 3,900", status: "En tránsito", eta: "28 may" },
-  { id: "PO-2101", supplier: "Cabaña Sur", total: "S/ 5,240", status: "Confirmado", eta: "24 may" },
-  { id: "PO-2096", supplier: "Coop. Maranganí", total: "S/ 6,448", status: "Entregado", eta: "19 may" },
-];
+import { usePurchaseOrders } from "@/lib/hooks/useDashboardData";
 
 export function ComprasTab() {
+  const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+  const { orders, loading } = usePurchaseOrders();
+  const openOrders = orders.filter((order) => !order.status.toLowerCase().includes("entreg")).length;
+  const closedOrders = orders.length - openOrders;
+  const inTransit = orders.filter((order) => order.status.toLowerCase().includes("trans")).length;
+
   return (
     <div className="space-y-6">
       <div className="grid md:grid-cols-3 gap-4">
         {[
-          { label: "Órdenes abiertas", value: "12", sub: "4 hoy", icon: <FileText className="w-5 h-5" />, bg: "var(--gold)" },
-          { label: "Entregas esta semana", value: "8", sub: "95% a tiempo", icon: <PackageCheck className="w-5 h-5" />, bg: "var(--mint)" },
-          { label: "Órdenes cerradas", value: "47", sub: "QA aprobada", icon: <BadgeCheck className="w-5 h-5" />, bg: "var(--pink)" },
+          { label: "Órdenes abiertas", value: String(openOrders), sub: `${orders.length} registradas`, icon: <FileText className="w-5 h-5" />, bg: "var(--gold)" },
+          { label: "Entregas en tránsito", value: String(inTransit), sub: "Seguimiento desde transacciones", icon: <PackageCheck className="w-5 h-5" />, bg: "var(--mint)" },
+          { label: "Órdenes cerradas", value: String(closedOrders), sub: "Estado final confirmado", icon: <BadgeCheck className="w-5 h-5" />, bg: "var(--pink)" },
         ].map((card, index) => (
           <motion.div key={card.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
             <ArtCard className="p-5">
@@ -34,6 +36,12 @@ export function ComprasTab() {
 
       <div>
         <SectionLabel n="N°01">Órdenes recientes</SectionLabel>
+        {selectedOrder && (
+          <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--ivory)] px-4 py-3 text-sm text-[var(--teal-deep)]">
+            Orden {selectedOrder} abierta. Usá este panel para revisar proveedor, monto y ETA.
+          </div>
+        )}
+        {loading && <ArtCard className="p-4 mb-4 text-sm text-[var(--ink)]/60">Cargando órdenes reales…</ArtCard>}
         <div className="space-y-3">
           {orders.map((order, index) => (
             <motion.div key={order.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.06 }}>
@@ -43,16 +51,17 @@ export function ComprasTab() {
                   <div className="text-xs text-[var(--ink)]/60">{order.supplier}</div>
                 </div>
                 <div className="ml-auto text-right">
-                  <div className="font-display text-lg text-[var(--terracotta)]" style={{ fontWeight: 700 }}>{order.total}</div>
+                  <div className="font-display text-lg text-[var(--terracotta)]" style={{ fontWeight: 700 }}>S/ {order.total.toLocaleString()}</div>
                   <div className="text-[10px] font-mono uppercase text-[var(--ink)]/50">ETA {order.eta}</div>
                 </div>
                 <span className="px-3 py-1 rounded-full border-2 border-[var(--ink)]/15 bg-[var(--paper)] text-[10px] font-mono uppercase">{order.status}</span>
-                <button className="px-4 py-2 rounded-full bg-[var(--ink)] text-[var(--ivory)] text-sm flex items-center gap-2">
+                <button onClick={() => setSelectedOrder(order.id)} className="px-4 py-2 rounded-full bg-[var(--ink)] text-[var(--ivory)] text-sm flex items-center gap-2">
                   Ver orden <ArrowUpRight className="w-4 h-4" />
                 </button>
               </ArtCard>
             </motion.div>
           ))}
+          {!loading && orders.length === 0 && <ArtCard className="p-4 text-sm text-[var(--ink)]/60">Todavía no hay órdenes registradas.</ArtCard>}
         </div>
       </div>
     </div>

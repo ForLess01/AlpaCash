@@ -1,13 +1,13 @@
-import { Sprout, Factory, LayoutDashboard, Landmark, ArrowLeft, ArrowRight } from "lucide-react";
+import { Sprout, Factory, Landmark, ArrowLeft, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../ui/button";
+import Link from "next/link";
 
-export type RoleId = "producer" | "buyer" | "admin" | "financial";
+export type RoleId = "producer" | "buyer" | "financial";
 
 const roles: { id: RoleId; icon: typeof Sprout; title: string; desc: string; soon?: boolean }[] = [
   { id: "producer", icon: Sprout, title: "Productor / Asociación", desc: "Publica lotes, recibe solicitudes, construye historial y accede a mejores oportunidades." },
   { id: "buyer", icon: Factory, title: "Comprador / Empresa", desc: "Explora lotes trazables, compara calidad, solicita compra y gestiona facturas." },
-  { id: "admin", icon: LayoutDashboard, title: "Administrador", desc: "Controla usuarios, lotes, solicitudes, reportes, facturación y seguridad." },
   { id: "financial", icon: Landmark, title: "Aliado financiero", desc: "Consulta reportes autorizados para evaluar oportunidades de financiamiento." },
 ];
 
@@ -21,10 +21,10 @@ export function RoleSelector({ onBack, onPick }: { onBack?: () => void; onPick?:
           <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-[var(--teal-deep)]/80 hover:text-[var(--teal-deep)]">
             <ArrowLeft className="w-4 h-4" /> Volver
           </button>
-          <a href="#" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <img src="/ALPACASH.svg" alt="AlpaCash Logo" className="h-8 w-auto" />
             <span className="text-[var(--teal-deep)]" style={{ fontWeight: 600 }}>AlpaCash</span>
-          </a>
+          </Link>
         </div>
 
         <div className="mt-14 text-center max-w-2xl mx-auto">

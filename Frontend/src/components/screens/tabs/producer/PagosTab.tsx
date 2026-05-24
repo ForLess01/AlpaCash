@@ -5,23 +5,10 @@ import { motion } from "motion/react";
 import { CheckCircle2, Clock, AlertCircle, Download } from "lucide-react";
 import { ArtCard, SectionLabel } from "../../DashShell";
 import { ReceiptPaper, Vault, ChartSparkle } from "../../../icons/AlpaIcons";
+import { usePayments } from "@/lib/hooks/useDashboardData";
 
 type TxStatus = "pagado" | "pendiente" | "en proceso";
-type Tx = { id: string; date: string; lot: string; buyer: string; amount: number; lb: number; status: TxStatus };
 type Period = "30d" | "90d" | "año";
-
-const TXNS: Tx[] = [
-  { id: "PAG-108", date: "22 May 2026", lot: "AC-2051", buyer: "Kuna SA", amount: 3280, lb: 80, status: "pagado" },
-  { id: "PAG-107", date: "18 May 2026", lot: "AC-2048", buyer: "Textiles Andina", amount: 3900, lb: 120, status: "en proceso" },
-  { id: "PAG-106", date: "10 May 2026", lot: "AC-2044", buyer: "Pacomarca", amount: 3150, lb: 90, status: "pagado" },
-  { id: "PAG-105", date: "28 Abr 2026", lot: "AC-2042", buyer: "Michell y Cía", amount: 4320, lb: 160, status: "pagado" },
-  { id: "PAG-104", date: "15 Abr 2026", lot: "AC-2040", buyer: "Inca Tops", amount: 2580, lb: 60, status: "pendiente" },
-  { id: "PAG-103", date: "3 Abr 2026", lot: "AC-2038", buyer: "Grupo Inka", amount: 5400, lb: 240, status: "pagado" },
-  { id: "PAG-102", date: "20 Mar 2026", lot: "AC-2034", buyer: "Kuna SA", amount: 2100, lb: 100, status: "pagado" },
-  { id: "PAG-101", date: "8 Mar 2026", lot: "AC-2030", buyer: "Pacomarca", amount: 3680, lb: 80, status: "pagado" },
-  { id: "PAG-100", date: "14 Feb 2026", lot: "AC-2026", buyer: "Textiles Andina", amount: 1920, lb: 120, status: "pagado" },
-  { id: "PAG-099", date: "2 Ene 2026", lot: "AC-2020", buyer: "Michell y Cía", amount: 4480, lb: 280, status: "pagado" },
-];
 
 const STATUS_ICON: Record<TxStatus, React.JSX.Element> = {
   pagado: <CheckCircle2 className="w-4 h-4 text-emerald-600" />,
@@ -36,10 +23,12 @@ const STATUS_COLOR: Record<TxStatus, string> = {
 
 export function PagosTab() {
   const [period, setPeriod] = useState<Period>("30d");
+  const [downloaded, setDownloaded] = useState<string | null>(null);
+  const { payments, loading } = usePayments();
 
-  const totalPaid = TXNS.filter((t) => t.status === "pagado").reduce((s, t) => s + t.amount, 0);
-  const pending = TXNS.filter((t) => t.status === "pendiente").reduce((s, t) => s + t.amount, 0);
-  const thisMonth = TXNS.filter((t) => t.date.includes("May") && t.status === "pagado").reduce((s, t) => s + t.amount, 0);
+  const totalPaid = payments.filter((t) => t.status === "pagado").reduce((s, t) => s + t.amount, 0);
+  const pending = payments.filter((t) => t.status === "pendiente").reduce((s, t) => s + t.amount, 0);
+  const thisMonth = payments.filter((t) => t.date.includes("May") && t.status === "pagado").reduce((s, t) => s + t.amount, 0);
 
   return (
     <div>
@@ -75,6 +64,16 @@ export function PagosTab() {
       </div>
 
       <ArtCard className="overflow-hidden">
+        {downloaded && (
+          <div className="px-4 py-3 text-sm text-[var(--teal-deep)] border-b border-[var(--ink)]/10 bg-[var(--ivory)]">
+            Comprobante {downloaded} preparado para descarga.
+          </div>
+        )}
+        {loading && (
+          <div className="px-4 py-3 text-sm text-[var(--teal-deep)] border-b border-[var(--ink)]/10 bg-[var(--ivory)]">
+            Cargando transacciones reales…
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -85,7 +84,7 @@ export function PagosTab() {
               </tr>
             </thead>
             <tbody>
-              {TXNS.map((t, i) => (
+              {payments.map((t, i) => (
                 <motion.tr
                   key={t.id}
                   initial={{ opacity: 0 }}
@@ -105,7 +104,7 @@ export function PagosTab() {
                   </td>
                   <td className="px-4 py-3">
                     {t.status === "pagado" && (
-                      <button className="w-8 h-8 rounded-full bg-[var(--paper)] border border-[var(--ink)]/10 flex items-center justify-center hover:bg-[var(--ivory)] transition-colors">
+                      <button onClick={() => setDownloaded(t.id)} className="w-8 h-8 rounded-full bg-[var(--paper)] border border-[var(--ink)]/10 flex items-center justify-center hover:bg-[var(--ivory)] transition-colors">
                         <Download className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -115,9 +114,9 @@ export function PagosTab() {
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-[var(--ink)]/10 bg-[var(--ivory)]">
-                <td colSpan={4} className="px-4 py-3 font-mono text-xs text-[var(--ink)]/60">Total ({TXNS.length} transacciones)</td>
+                <td colSpan={4} className="px-4 py-3 font-mono text-xs text-[var(--ink)]/60">Total ({payments.length} transacciones)</td>
                 <td className="px-4 py-3 font-display" style={{ fontWeight: 700 }}>
-                  S/ {TXNS.reduce((s, t) => s + t.amount, 0).toLocaleString()}
+                  S/ {payments.reduce((s, t) => s + t.amount, 0).toLocaleString()}
                 </td>
                 <td colSpan={2} />
               </tr>

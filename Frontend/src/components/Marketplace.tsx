@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/lib/hooks/useCart";
 import { CartDrawer } from "./modals/CartDrawer";
+import { LotDetailModal, type DisplayLot } from "./modals/LotDetailModal";
 
 type Lot = {
   code: string;
@@ -84,6 +85,9 @@ export function Marketplace({ onBack }: { onBack?: () => void }) {
   });
   const [compare, setCompare] = useState<Set<string>>(new Set());
   const [cartOpen, setCartOpen] = useState(false);
+  const [detailLot, setDetailLot] = useState<DisplayLot | null>(null);
+  const [lotOpen, setLotOpen] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
   const { items: cartItems, addItem, count } = useCart();
 
   const isInCart = (code: string) => cartItems.some((c) => c.id === code);
@@ -118,6 +122,11 @@ export function Marketplace({ onBack }: { onBack?: () => void }) {
     return list;
   }, [q, sort, filters]);
 
+  const comparedLots = useMemo(
+    () => ALL_LOTS.filter((lot) => compare.has(lot.code)),
+    [compare]
+  );
+
   const toggleSet = (key: "categories" | "colors" | "regions" | "qualities", value: string) => {
     setFilters((f) => {
       const s = new Set(f[key]);
@@ -137,6 +146,20 @@ export function Marketplace({ onBack }: { onBack?: () => void }) {
       else if (n.size < 3) n.add(code);
       return n;
     });
+  };
+
+  const openLotDetail = (lot: Lot) => {
+    setDetailLot({
+      id: lot.code,
+      cat: lot.category,
+      color: lot.color,
+      origin: lot.region,
+      lb: lot.qty,
+      price: lot.price,
+      prod: lot.verifiedProducer ? "Productor verificado" : "Productor (pendiente)",
+      grade: lot.quality,
+    });
+    setLotOpen(true);
   };
 
   return (
@@ -259,6 +282,7 @@ export function Marketplace({ onBack }: { onBack?: () => void }) {
                   l={l}
                   compare={compare.has(l.code)}
                   onCompare={() => toggleCompare(l.code)}
+                  onView={() => openLotDetail(l)}
                   inCart={isInCart(l.code)}
                   onAdd={() => handleAdd(l)}
                 />
@@ -272,6 +296,7 @@ export function Marketplace({ onBack }: { onBack?: () => void }) {
                   l={l}
                   compare={compare.has(l.code)}
                   onCompare={() => toggleCompare(l.code)}
+                  onView={() => openLotDetail(l)}
                   inCart={isInCart(l.code)}
                   onAdd={() => handleAdd(l)}
                 />
@@ -300,13 +325,59 @@ export function Marketplace({ onBack }: { onBack?: () => void }) {
               </span>
             ))}
           </div>
-          <Button size="sm" className="bg-[var(--gold)] text-[var(--teal-deep)] hover:bg-[var(--gold-soft)] rounded-full">
+          <Button size="sm" onClick={() => setCompareOpen(true)} className="bg-[var(--gold)] text-[var(--teal-deep)] hover:bg-[var(--gold-soft)] rounded-full">
             Comparar ahora
           </Button>
         </div>
       )}
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+      <LotDetailModal open={lotOpen} lot={detailLot} onClose={() => setLotOpen(false)} />
+
+      {compareOpen && comparedLots.length > 0 && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-[var(--ink)]/60 backdrop-blur-sm" onClick={() => setCompareOpen(false)} />
+          <div className="absolute inset-x-4 top-8 bottom-8 overflow-auto rounded-3xl bg-white border border-[var(--border)] p-6 sm:p-8">
+            <div className="flex items-center justify-between gap-4 mb-6">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Comparador</div>
+                <h2 className="text-2xl text-[var(--teal-deep)]" style={{ fontWeight: 600 }}>
+                  {comparedLots.length} lotes seleccionados
+                </h2>
+              </div>
+              <button onClick={() => setCompareOpen(false)} className="w-10 h-10 rounded-full bg-[var(--teal-deep)] text-white flex items-center justify-center">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {comparedLots.map((lot) => (
+                <article key={lot.code} className="rounded-2xl border border-[var(--border)] p-5 bg-[var(--ivory)]">
+                  <div className="flex items-center justify-between">
+                    <div className="text-[var(--teal-deep)]" style={{ fontWeight: 600 }}>{lot.code}</div>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full border ${qualityStyles[lot.quality]}`}>{lot.quality}</span>
+                  </div>
+                  <dl className="mt-4 space-y-2 text-sm">
+                    <div className="flex justify-between gap-3"><dt className="text-[var(--muted-foreground)]">Categoría</dt><dd>{lot.category}</dd></div>
+                    <div className="flex justify-between gap-3"><dt className="text-[var(--muted-foreground)]">Color</dt><dd>{lot.color}</dd></div>
+                    <div className="flex justify-between gap-3"><dt className="text-[var(--muted-foreground)]">Origen</dt><dd>{lot.region}</dd></div>
+                    <div className="flex justify-between gap-3"><dt className="text-[var(--muted-foreground)]">Cantidad</dt><dd>{lot.qty} lb</dd></div>
+                    <div className="flex justify-between gap-3"><dt className="text-[var(--muted-foreground)]">Precio</dt><dd>S/ {lot.price.toFixed(2)}/lb</dd></div>
+                    <div className="flex justify-between gap-3"><dt className="text-[var(--muted-foreground)]">Reputación</dt><dd>★ {lot.rating.toFixed(1)}</dd></div>
+                  </dl>
+                  <div className="mt-5 flex gap-2">
+                    <Button variant="outline" className="flex-1" onClick={() => openLotDetail(lot)}>
+                      Ver ficha
+                    </Button>
+                    <Button className="flex-1 bg-[var(--terracotta)] hover:bg-[var(--terracotta-soft)]" onClick={() => handleAdd(lot)} disabled={isInCart(lot.code)}>
+                      {isInCart(lot.code) ? "Añadido" : "Solicitar"}
+                    </Button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -357,7 +428,7 @@ function PriceDelta({ price, market }: { price: number; market: number }) {
   return <span className={`text-[10px] ${cls}`}>{label}</span>;
 }
 
-function LotCard({ l, compare, onCompare, inCart, onAdd }: { l: Lot; compare: boolean; onCompare: () => void; inCart: boolean; onAdd: () => void }) {
+function LotCard({ l, compare, onCompare, onView, inCart, onAdd }: { l: Lot; compare: boolean; onCompare: () => void; onView: () => void; inCart: boolean; onAdd: () => void }) {
   return (
     <article className="bg-white rounded-2xl border border-[var(--border)] overflow-hidden flex flex-col hover:shadow-xl hover:-translate-y-0.5 transition-all group">
       <div className="relative aspect-[4/3] bg-[var(--ivory-2)] overflow-hidden">
@@ -397,7 +468,7 @@ function LotCard({ l, compare, onCompare, inCart, onAdd }: { l: Lot; compare: bo
           <button onClick={onCompare} className={`text-xs py-2 rounded-full border flex items-center justify-center gap-1 transition-colors ${compare ? "bg-[var(--teal-deep)] text-[var(--ivory)] border-[var(--teal-deep)]" : "border-[var(--border)] text-[var(--teal-deep)] hover:bg-[var(--ivory-2)]"}`}>
             <Scale className="w-3.5 h-3.5" /> Comparar
           </button>
-          <button className="text-xs py-2 rounded-full border border-[var(--border)] text-[var(--teal-deep)] hover:bg-[var(--ivory-2)] flex items-center justify-center gap-1">
+          <button onClick={onView} className="text-xs py-2 rounded-full border border-[var(--border)] text-[var(--teal-deep)] hover:bg-[var(--ivory-2)] flex items-center justify-center gap-1">
             <BadgeCheck className="w-3.5 h-3.5" /> Ver ficha
           </button>
           <button
@@ -413,7 +484,7 @@ function LotCard({ l, compare, onCompare, inCart, onAdd }: { l: Lot; compare: bo
   );
 }
 
-function LotRow({ l, compare, onCompare, inCart, onAdd }: { l: Lot; compare: boolean; onCompare: () => void; inCart: boolean; onAdd: () => void }) {
+function LotRow({ l, compare, onCompare, onView, inCart, onAdd }: { l: Lot; compare: boolean; onCompare: () => void; onView: () => void; inCart: boolean; onAdd: () => void }) {
   return (
     <article className="bg-white rounded-2xl border border-[var(--border)] p-4 flex gap-4 hover:shadow-md transition-shadow">
       <div className="relative w-32 h-32 rounded-xl overflow-hidden shrink-0 bg-[var(--ivory-2)]">
@@ -444,6 +515,7 @@ function LotRow({ l, compare, onCompare, inCart, onAdd }: { l: Lot; compare: boo
         </div>
         <div className="col-span-12 md:col-span-2 flex md:flex-col gap-2">
           <button onClick={onCompare} className={`flex-1 text-xs py-2 rounded-full border ${compare ? "bg-[var(--teal-deep)] text-[var(--ivory)] border-[var(--teal-deep)]" : "border-[var(--border)] text-[var(--teal-deep)]"}`}>Comparar</button>
+          <button onClick={onView} className="flex-1 text-xs py-2 rounded-full border border-[var(--border)] text-[var(--teal-deep)]">Ver ficha</button>
           <button
             onClick={onAdd}
             disabled={inCart}

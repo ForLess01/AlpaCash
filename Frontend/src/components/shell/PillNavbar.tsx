@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Menu, X, Globe, Search } from "lucide-react";
-import { FiberBall } from "../icons/AlpaIcons";
 
 export type NavTarget = "landing" | "marketplace" | "demo" | "prices" | "trust" | "login" | "register";
 
@@ -63,7 +62,7 @@ export function PillNavbar({
 
           {/* Lang + Search */}
           <div className="pointer-events-auto flex items-center gap-2">
-            <button className="w-10 h-10 rounded-full bg-[var(--ivory)] border border-[var(--ink)]/15 flex items-center justify-center text-[var(--ink)] hover:bg-white transition-colors">
+            <button onClick={() => onNavigate("marketplace")} className="w-10 h-10 rounded-full bg-[var(--ivory)] border border-[var(--ink)]/15 flex items-center justify-center text-[var(--ink)] hover:bg-white transition-colors">
               <Search className="w-4 h-4" />
             </button>
             <div className="flex items-center gap-1 px-1 py-1 rounded-full bg-[var(--ivory)] border border-[var(--ink)]/15">

@@ -6,16 +6,26 @@ import { AuthShell } from "./AuthShell";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Mail, Lock, User, MapPin, Building2, Sprout, Factory, LayoutDashboard, Landmark, ArrowRight, Check } from "lucide-react";
+import { Mail, Lock, User, MapPin, Building2, Sprout, Factory, Landmark, ArrowRight, Check } from "lucide-react";
 import type { RoleId } from "./RoleSelector";
 import { createClient } from "@/lib/supabase/client";
-import { ROLE_ID_TO_ROLE, ROLE_TO_ROUTE, type Role } from "@/lib/supabase/types";
+import { ROLE_ID_TO_ROLE, type Role } from "@/lib/supabase/types";
 import { getSupabaseEnv } from "@/lib/supabase/env";
+import { getAuthCallbackUrl } from "@/lib/supabase/redirect";
+import {
+  isLettersOnly,
+  isValidDni,
+  isValidEmail,
+  isValidRuc,
+  normalizeSpaces,
+  sanitizeAlphanumeric,
+  sanitizeDigits,
+  sanitizeLetters,
+} from "@/lib/forms/validation";
 
 const roleOptions: { id: RoleId; icon: typeof Sprout; label: string }[] = [
   { id: "producer", icon: Sprout, label: "Productor" },
   { id: "buyer", icon: Factory, label: "Comprador" },
-  { id: "admin", icon: LayoutDashboard, label: "Admin" },
   { id: "financial", icon: Landmark, label: "Financiero" },
 ];
 
@@ -53,8 +63,7 @@ export function Register({
 
   const eyebrow =
     role === "producer" ? "Productor alpaquero" :
-    role === "buyer" ? "Empresa textil" :
-    role === "financial" ? "Aliado financiero" : "Administrador";
+    role === "buyer" ? "Empresa textil" : "Aliado financiero";
 
   async function handleGoogle() {
     setError(null);
@@ -65,10 +74,11 @@ export function Register({
     setLoading(true);
     try {
       const supabase = createClient();
+      const redirectTo = getAuthCallbackUrl();
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          ...(redirectTo ? { redirectTo } : {}),
           skipBrowserRedirect: true,
         },
       });
@@ -97,16 +107,58 @@ export function Register({
       return;
     }
 
+    const firstName = normalizeSpaces(formData.firstName);
+    const lastName = normalizeSpaces(formData.lastName);
+    const email = formData.email.trim().toLowerCase();
+    const dni = sanitizeDigits(formData.dni, 8);
+    const ruc = sanitizeDigits(formData.ruc, 11);
+
+    if (!firstName || !isLettersOnly(firstName)) {
+      setError("Nombres: solo letras y espacios.");
+      return;
+    }
+    if (!lastName || !isLettersOnly(lastName)) {
+      setError("Apellidos: solo letras y espacios.");
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setError("Ingresá un correo válido.");
+      return;
+    }
+    if (formData.password.length < 8) {
+      setError("La contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+    if (role !== "buyer" && role !== "financial") {
+      if (dni && !isValidDni(dni)) {
+        setError("El DNI debe tener 8 dígitos.");
+        return;
+      }
+      if (formData.region && !isLettersOnly(formData.region)) {
+        setError("La región solo puede contener letras.");
+        return;
+      }
+      if (formData.province && !isLettersOnly(formData.province)) {
+        setError("La provincia solo puede contener letras.");
+        return;
+      }
+    } else if (ruc && !isValidRuc(ruc)) {
+      setError("El RUC debe tener 11 dígitos.");
+      return;
+    }
+
     setLoading(true);
     try {
       const supabase = createClient();
       const mappedRole = ROLE_ID_TO_ROLE[role];
-      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+      const fullName = `${firstName} ${lastName}`.trim();
+      const emailRedirectTo = getAuthCallbackUrl();
 
       const { data, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
+        email,
         password: formData.password,
         options: {
+          ...(emailRedirectTo ? { emailRedirectTo } : {}),
           data: {
             role: mappedRole,
             full_name: fullName,
@@ -132,7 +184,8 @@ export function Register({
         return;
       }
 
-      router.push(ROLE_TO_ROUTE[mappedRole]);
+      await supabase.auth.signOut();
+      router.push("/auth/login?registered=1");
     } finally {
       setLoading(false);
     }
@@ -144,34 +197,37 @@ export function Register({
     rol: Role,
     fullName: string,
   ): Promise<string | null> {
+    const dni = sanitizeDigits(formData.dni, 8);
+    const ruc = sanitizeDigits(formData.ruc, 11);
+
     if (rol === "productor") {
-      const { error: e } = await supabase.from("productores").insert({
-        profile_id: userId,
-        codigo_productor: `AC-${Date.now().toString(36).toUpperCase()}`,
-        dni_ruc: formData.dni || null,
-        nombre_asociacion: formData.community || null,
-        comunidad: formData.community || null,
-        provincia: formData.province || null,
-        region: formData.region || "Puno",
-      });
+        const { error: e } = await supabase.from("productores").insert({
+          profile_id: userId,
+          codigo_productor: `AC-${Date.now().toString(36).toUpperCase()}`,
+          dni_ruc: dni || null,
+          nombre_asociacion: normalizeSpaces(formData.community) || null,
+          comunidad: normalizeSpaces(formData.community) || null,
+          provincia: normalizeSpaces(formData.province) || null,
+          region: normalizeSpaces(formData.region) || "Puno",
+        });
       return e?.message ?? null;
     }
     if (rol === "empresa") {
-      const { error: e } = await supabase.from("empresas").insert({
-        profile_id: userId,
-        ruc: formData.ruc || null,
-        razon_social: formData.razonSocial || fullName,
-        rubro: formData.sector || null,
-        direccion: formData.address || null,
-      });
+        const { error: e } = await supabase.from("empresas").insert({
+          profile_id: userId,
+          ruc: ruc || null,
+          razon_social: normalizeSpaces(formData.razonSocial) || fullName,
+          rubro: normalizeSpaces(formData.sector) || null,
+          direccion: normalizeSpaces(formData.address) || null,
+        });
       return e?.message ?? null;
     }
     if (rol === "financiera") {
-      const { error: e } = await supabase.from("entidades_financieras").insert({
-        profile_id: userId,
-        razon_social: formData.razonSocial || fullName,
-        ruc: formData.ruc || null,
-      });
+        const { error: e } = await supabase.from("entidades_financieras").insert({
+          profile_id: userId,
+          razon_social: normalizeSpaces(formData.razonSocial) || fullName,
+          ruc: ruc || null,
+        });
       return e?.message ?? null;
     }
     // admin: no extra table to insert
@@ -180,6 +236,50 @@ export function Register({
 
   function handleNext(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
+    if (step === 1) {
+      const firstName = normalizeSpaces(formData.firstName);
+      const lastName = normalizeSpaces(formData.lastName);
+      if (!firstName || !isLettersOnly(firstName)) {
+        setError("Nombres: solo letras y espacios.");
+        return;
+      }
+      if (!lastName || !isLettersOnly(lastName)) {
+        setError("Apellidos: solo letras y espacios.");
+        return;
+      }
+      if (!isValidEmail(formData.email.trim().toLowerCase())) {
+        setError("Ingresá un correo válido.");
+        return;
+      }
+      if (formData.password.length < 8) {
+        setError("La contraseña debe tener al menos 8 caracteres.");
+        return;
+      }
+    }
+    if (step === 2) {
+      if (role === "buyer" || role === "financial") {
+        const ruc = sanitizeDigits(formData.ruc, 11);
+        if (ruc && !isValidRuc(ruc)) {
+          setError("El RUC debe tener 11 dígitos.");
+          return;
+        }
+      } else {
+        const dni = sanitizeDigits(formData.dni, 8);
+        if (dni && !isValidDni(dni)) {
+          setError("El DNI debe tener 8 dígitos.");
+          return;
+        }
+        if (formData.region && !isLettersOnly(formData.region)) {
+          setError("La región solo puede contener letras.");
+          return;
+        }
+        if (formData.province && !isLettersOnly(formData.province)) {
+          setError("La provincia solo puede contener letras.");
+          return;
+        }
+      }
+    }
     if (step < totalSteps) {
       setStep(step + 1);
     } else {
@@ -268,13 +368,13 @@ export function Register({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="fn" className="text-[var(--teal-deep)]">Nombres</Label>
-                  <Input id="fn" placeholder="Juana" className="mt-1.5 h-11 bg-white border-[var(--border)]"
-                    value={formData.firstName} onChange={(e) => setFormData(f => ({ ...f, firstName: e.target.value }))} required />
+                    <Input id="fn" placeholder="Juana" className="mt-1.5 h-11 bg-white border-[var(--border)]"
+                    value={formData.firstName} onChange={(e) => setFormData(f => ({ ...f, firstName: sanitizeLetters(e.target.value) }))} required />
                 </div>
                 <div>
                   <Label htmlFor="ln" className="text-[var(--teal-deep)]">Apellidos</Label>
                   <Input id="ln" placeholder="Quispe" className="mt-1.5 h-11 bg-white border-[var(--border)]"
-                    value={formData.lastName} onChange={(e) => setFormData(f => ({ ...f, lastName: e.target.value }))} required />
+                    value={formData.lastName} onChange={(e) => setFormData(f => ({ ...f, lastName: sanitizeLetters(e.target.value) }))} required />
                 </div>
               </div>
 
@@ -283,7 +383,7 @@ export function Register({
                 <div className="relative mt-1.5">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]" />
                   <Input id="em" type="email" placeholder="tu@correo.pe" className="pl-9 h-11 bg-white border-[var(--border)]"
-                    value={formData.email} onChange={(e) => setFormData(f => ({ ...f, email: e.target.value }))} required />
+                    value={formData.email} onChange={(e) => setFormData(f => ({ ...f, email: e.target.value.trimStart() }))} required />
                 </div>
               </div>
 
@@ -307,19 +407,19 @@ export function Register({
                     <div className="relative mt-1.5">
                       <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]" />
                       <Input id="rs" placeholder="Textil Andina S.A.C." className="pl-9 h-11 bg-white border-[var(--border)]"
-                        value={formData.razonSocial} onChange={(e) => setFormData(f => ({ ...f, razonSocial: e.target.value }))} />
+                        value={formData.razonSocial} onChange={(e) => setFormData(f => ({ ...f, razonSocial: sanitizeAlphanumeric(e.target.value) }))} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label htmlFor="ruc" className="text-[var(--teal-deep)]">RUC</Label>
                       <Input id="ruc" placeholder="20XXXXXXXXX" className="mt-1.5 h-11 bg-white border-[var(--border)]"
-                        value={formData.ruc} onChange={(e) => setFormData(f => ({ ...f, ruc: e.target.value }))} />
+                        value={formData.ruc} onChange={(e) => setFormData(f => ({ ...f, ruc: sanitizeDigits(e.target.value, 11) }))} />
                     </div>
                     <div>
                       <Label htmlFor="sector" className="text-[var(--teal-deep)]">Sector</Label>
                       <Input id="sector" placeholder="Textil / Exportación" className="mt-1.5 h-11 bg-white border-[var(--border)]"
-                        value={formData.sector} onChange={(e) => setFormData(f => ({ ...f, sector: e.target.value }))} />
+                        value={formData.sector} onChange={(e) => setFormData(f => ({ ...f, sector: sanitizeAlphanumeric(e.target.value) }))} />
                     </div>
                   </div>
                   <div>
@@ -327,7 +427,7 @@ export function Register({
                     <div className="relative mt-1.5">
                       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]" />
                       <Input id="dir" placeholder="Av. ..." className="pl-9 h-11 bg-white border-[var(--border)]"
-                        value={formData.address} onChange={(e) => setFormData(f => ({ ...f, address: e.target.value }))} />
+                        value={formData.address} onChange={(e) => setFormData(f => ({ ...f, address: sanitizeAlphanumeric(e.target.value) }))} />
                     </div>
                   </div>
                 </>
@@ -338,24 +438,24 @@ export function Register({
                     <div className="relative mt-1.5">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]" />
                       <Input id="dni" placeholder="00000000" className="pl-9 h-11 bg-white border-[var(--border)]"
-                        value={formData.dni} onChange={(e) => setFormData(f => ({ ...f, dni: e.target.value }))} />
+                        value={formData.dni} onChange={(e) => setFormData(f => ({ ...f, dni: sanitizeDigits(e.target.value, 8) }))} />
                     </div>
                   </div>
                   <div>
                     <Label htmlFor="com" className="text-[var(--teal-deep)]">Comunidad / Asociación</Label>
                     <Input id="com" placeholder="Asoc. Tinta Alpaquera" className="mt-1.5 h-11 bg-white border-[var(--border)]"
-                      value={formData.community} onChange={(e) => setFormData(f => ({ ...f, community: e.target.value }))} />
+                      value={formData.community} onChange={(e) => setFormData(f => ({ ...f, community: sanitizeAlphanumeric(e.target.value) }))} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label htmlFor="reg" className="text-[var(--teal-deep)]">Región</Label>
                       <Input id="reg" placeholder="Puno" className="mt-1.5 h-11 bg-white border-[var(--border)]"
-                        value={formData.region} onChange={(e) => setFormData(f => ({ ...f, region: e.target.value }))} />
+                        value={formData.region} onChange={(e) => setFormData(f => ({ ...f, region: sanitizeLetters(e.target.value) }))} />
                     </div>
                     <div>
                       <Label htmlFor="prov" className="text-[var(--teal-deep)]">Provincia</Label>
                       <Input id="prov" placeholder="Lampa" className="mt-1.5 h-11 bg-white border-[var(--border)]"
-                        value={formData.province} onChange={(e) => setFormData(f => ({ ...f, province: e.target.value }))} />
+                        value={formData.province} onChange={(e) => setFormData(f => ({ ...f, province: sanitizeLetters(e.target.value) }))} />
                     </div>
                   </div>
                   <p className="text-xs text-[var(--muted-foreground)]">

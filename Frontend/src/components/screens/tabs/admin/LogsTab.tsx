@@ -1,15 +1,25 @@
 "use client";
 
 import { ArtCard, SectionLabel } from "../../DashShell";
+import { useNotifications } from "@/lib/hooks/useDashboardData";
 
 export function LogsTab() {
+  const logs = useNotifications();
+
   return (
     <div>
       <SectionLabel n="N°03">Bitácora completa</SectionLabel>
       <div className="space-y-3">
-        {["11:42 · Consentimiento otorgado al lote AC-2048", "10:18 · Firma digital de certificador aplicada", "09:02 · Backup de bóveda verificado"].map((entry) => (
-          <ArtCard key={entry} className="p-4 text-sm">{entry}</ArtCard>
-        ))}
+        {logs.length === 0 ? (
+          <ArtCard className="p-4 text-sm text-[var(--ink)]/60">Sin eventos recientes en bitácora.</ArtCard>
+        ) : (
+          logs.map((entry) => (
+            <ArtCard key={entry.id} className="p-4 text-sm">
+              <div className="font-medium">{entry.title}</div>
+              <div className="text-[var(--ink)]/70">{entry.body}</div>
+            </ArtCard>
+          ))
+        )}
       </div>
     </div>
   );

@@ -33,6 +33,7 @@ const CERTS = [
 
 export function CapacitacionTab() {
   const [playingEp, setPlayingEp] = useState<number | null>(null);
+  const [activeModule, setActiveModule] = useState<string | null>(null);
 
   const completed = MODULES.filter((m) => m.status === "completado").length;
   const total = MODULES.length;
@@ -87,7 +88,7 @@ export function CapacitacionTab() {
                     </div>
                   )}
                   {m.status === "en curso" && (
-                    <button className="mt-2 w-full py-1.5 rounded-full bg-[var(--ink)] text-[var(--ivory)] text-xs flex items-center justify-center gap-1" style={{ fontWeight: 500 }}>
+                    <button onClick={() => setActiveModule(m.title)} className="mt-2 w-full py-1.5 rounded-full bg-[var(--ink)] text-[var(--ivory)] text-xs flex items-center justify-center gap-1" style={{ fontWeight: 500 }}>
                       <Play className="w-3 h-3" /> Continuar
                     </button>
                   )}
@@ -95,6 +96,11 @@ export function CapacitacionTab() {
               </motion.div>
             ))}
           </div>
+          {activeModule && (
+            <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--ivory)] px-4 py-3 text-sm text-[var(--teal-deep)]">
+              Retomando módulo: {activeModule}.
+            </div>
+          )}
         </div>
 
         {/* Podcast */}
