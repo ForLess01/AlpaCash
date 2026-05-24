@@ -41,6 +41,10 @@ backend/dist/
 backend/build/
 backend/logs/
 backend/*.log
+Backend/dist/
+Backend/build/
+Backend/logs/
+Backend/*.log
 
 # =========================
 # Logs
