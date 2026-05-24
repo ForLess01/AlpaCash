@@ -9,11 +9,11 @@ export async function GET(request: NextRequest) {
   // Resolvémos el origin público dinámicamente para reverse proxies (Render, Vercel)
   const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
   const proto = request.headers.get("x-forwarded-proto") || "https";
-  const envUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.RENDER_EXTERNAL_URL?.trim();
   
   const origin = envUrl
     ? (envUrl.startsWith("http") ? envUrl : `https://${envUrl}`).replace(/\/+$/, "")
-    : (host ? `${proto}://${host}` : new URL(request.url).origin);
+    : (host && !host.includes("localhost") ? `${proto}://${host}` : new URL(request.url).origin);
 
   const code = searchParams.get("code");
 
