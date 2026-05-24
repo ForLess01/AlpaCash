@@ -78,6 +78,13 @@ create policy "profiles_select_own"
     on profiles for select
     using (auth.uid() = id);
 
+-- Necesario para OAuth flow: el trigger no crea profile si no hay role
+-- en metadata, así que el cliente debe insertarlo desde /auth/complete-profile.
+drop policy if exists "profiles_insert_own" on profiles;
+create policy "profiles_insert_own"
+    on profiles for insert
+    with check (auth.uid() = id);
+
 drop policy if exists "profiles_update_own" on profiles;
 create policy "profiles_update_own"
     on profiles for update
