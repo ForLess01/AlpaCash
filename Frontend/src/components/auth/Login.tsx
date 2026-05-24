@@ -25,6 +25,31 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
   const env = getSupabaseEnv();
   const configError = searchParams.get("error") === "supabase-config" || !env.isConfigured;
 
+  async function handleGoogle() {
+    setError(null);
+    if (!env.isConfigured) {
+      setError("Falta configurar Supabase en Vercel o en Frontend/.env.local.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (oauthError) {
+        setError(oauthError.message);
+        setLoading(false);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error inesperado con Google.");
+      setLoading(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -161,7 +186,13 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
             <Button type="button" variant="outline" className="h-11 rounded-full border-[var(--border)] bg-white text-[var(--teal-deep)]">
               <Fingerprint className="w-4 h-4 mr-2" /> Identificación
             </Button>
-            <Button type="button" variant="outline" className="h-11 rounded-full border-[var(--border)] bg-white text-[var(--teal-deep)]">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleGoogle}
+              disabled={loading || !env.isConfigured}
+              className="h-11 rounded-full border-[var(--border)] bg-white text-[var(--teal-deep)] disabled:opacity-60"
+            >
               <Mail className="w-4 h-4 mr-2" /> Google
             </Button>
           </div>

@@ -20,13 +20,24 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+    chosen_role text := new.raw_user_meta_data->>'role';
 begin
+    -- Si no hay rol en el metadata (caso OAuth/Google), NO creamos profile.
+    -- El cliente debe redirigir al usuario a /auth/complete-profile y crear
+    -- su profile + tabla rol-específica desde ahí.
+    if chosen_role is null then
+        return new;
+    end if;
+
+    -- Signup tradicional (email + password con wizard): el frontend envía
+    -- el rol en options.data, lo persistimos automáticamente.
     insert into public.profiles (id, nombre, email, rol, telefono, avatar_url)
     values (
         new.id,
         coalesce(new.raw_user_meta_data->>'full_name', new.email),
         new.email,
-        coalesce(new.raw_user_meta_data->>'role', 'productor'),
+        chosen_role,
         new.raw_user_meta_data->>'phone',
         new.raw_user_meta_data->>'avatar_url'
     );

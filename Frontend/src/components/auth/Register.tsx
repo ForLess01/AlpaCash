@@ -56,6 +56,31 @@ export function Register({
     role === "buyer" ? "Empresa textil" :
     role === "financial" ? "Aliado financiero" : "Administrador";
 
+  async function handleGoogle() {
+    setError(null);
+    if (!env.isConfigured) {
+      setError("Falta configurar Supabase en Vercel o en Frontend/.env.local.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (oauthError) {
+        setError(oauthError.message);
+        setLoading(false);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error inesperado con Google.");
+      setLoading(false);
+    }
+  }
+
   async function handleFinalSubmit() {
     setError(null);
 
@@ -187,6 +212,26 @@ export function Register({
             );
           })}
         </div>
+
+        {step === 1 && (
+          <div className="mt-6 space-y-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleGoogle}
+              disabled={loading || !env.isConfigured}
+              className="w-full h-11 rounded-full border-[var(--border)] bg-white text-[var(--teal-deep)] disabled:opacity-60"
+            >
+              <Mail className="w-4 h-4 mr-2" /> Continuar con Google
+            </Button>
+            <div className="relative">
+              <div className="h-px bg-[var(--border)]" />
+              <span className="absolute left-1/2 -translate-x-1/2 -top-2.5 bg-[var(--ivory)] px-3 text-xs text-[var(--muted-foreground)]">
+                o completá el formulario
+              </span>
+            </div>
+          </div>
+        )}
 
         <form className="mt-6 space-y-5" onSubmit={handleNext}>
           {step === 1 && (
