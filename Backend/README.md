@@ -12,12 +12,14 @@ Crear `.env` en la raíz de `/Backend`:
 
 ```
 PORT=4000
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=<dominio público del frontend>  # ej. https://alpacash.onrender.com
 
 SUPABASE_URL=https://<tu-proyecto>.supabase.co
 SUPABASE_PUBLISHABLE_KEY=<anon/publishable key>
 SUPABASE_SECRET_KEY=<service_role key>
 ```
+
+> En producción (Vercel) cargá `FRONTEND_URL` con el dominio público del frontend para que CORS funcione.
 
 ### Instalar y correr
 
@@ -29,7 +31,7 @@ npm run build      # compilar a /dist
 npm start          # producción
 ```
 
-Servidor en: `http://localhost:4000`
+Servidor de dev en el puerto definido por `PORT`. En Vercel se sirve bajo el dominio del proyecto.
 
 ---
 
@@ -64,16 +66,16 @@ El `access_token` lo provee Supabase después del login (email/password o Google
 
 4. Redirigir según rol:
    productor   → /dashboard/productor
-   empresa     → /dashboard/empresa
-   admin       → /dashboard/admin
-   capacitador → /dashboard/capacitador
+   empresa     → /dashboard/comprador
+   admin       → /dashboard/administrador
+   financiera  → /dashboard/financiero
 ```
 
 ### Google OAuth
 
 ```
 1. supabase.auth.signInWithOAuth({ provider: 'google',
-     options: { redirectTo: 'http://localhost:3000/auth/callback' }
+     options: { redirectTo: `${window.location.origin}/auth/callback` }
    })
 
 2. En la página /auth/callback:
@@ -100,8 +102,8 @@ El `access_token` lo provee Supabase después del login (email/password o Google
 |-----|-------------|-----------------|
 | `productor` | Productor de fibra de alpaca | Formulario público |
 | `empresa` | Empresa compradora | Formulario público |
+| `financiera` | Entidad financiera aliada | Formulario público |
 | `admin` | Administrador de la plataforma | Creado por admin |
-| `capacitador` | Capacitador técnico de campo | Creado por admin |
 
 El `estado` de un perfil nuevo es siempre `pendiente`. Un admin debe activarlo a `activo`.
 
@@ -161,8 +163,8 @@ Crea el perfil del usuario en la plataforma. Se llama **una sola vez** tras el p
 }
 ```
 
-**Roles permitidos:** `productor` · `empresa`
-_(admin y capacitador los crea un administrador directamente en Supabase)_
+**Roles permitidos:** `productor` · `empresa` · `financiera`
+_(admin lo crea un administrador directamente en Supabase)_
 
 **Response 201:**
 ```json
