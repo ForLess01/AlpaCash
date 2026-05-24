@@ -4,6 +4,29 @@ import { getSupabaseEnv } from "@/lib/supabase/env";
 import { ROLE_TO_ROUTE, ROUTE_TO_ROLE, type Role } from "@/lib/supabase/types";
 
 export async function proxy(request: NextRequest) {
+  // Ajustamos request.nextUrl para reflejar el host público detrás de proxies reversos (Render, Vercel)
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  const proto = request.headers.get("x-forwarded-proto") || "https";
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.RENDER_EXTERNAL_URL?.trim();
+
+  if (envUrl) {
+    try {
+      const publicUrl = new URL(envUrl.startsWith("http") ? envUrl : `https://${envUrl}`);
+      request.nextUrl.protocol = publicUrl.protocol;
+      request.nextUrl.host = publicUrl.host;
+      request.nextUrl.hostname = publicUrl.hostname;
+      request.nextUrl.port = publicUrl.port;
+    } catch {
+      // Ignorar URLs inválidas
+    }
+  } else if (host && !host.includes("localhost")) {
+    request.nextUrl.protocol = proto.endsWith(":") ? proto : `${proto}:`;
+    request.nextUrl.host = host;
+    const [hostname, port] = host.split(":");
+    request.nextUrl.hostname = hostname;
+    request.nextUrl.port = port || "";
+  }
+
   const env = getSupabaseEnv();
 
   if (!env.isConfigured) {
