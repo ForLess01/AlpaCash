@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 
+import authRoutes from "./modules/auth/auth.routes";
+import profilesRoutes from "./modules/profiles/profiles.routes";
 import marketplaceRoutes from "./modules/marketplace/marketplace.routes";
 import lotesRoutes from "./modules/lotes-fibra/lotes.routes";
 import solicitudesRoutes from "./modules/solicitudes-compra/solicitudes.routes";
@@ -20,12 +22,16 @@ app.use(
 app.use(express.json());
 app.use(morgan("dev"));
 
-app.get("/", (_req, res) => {
-  res.json({
-    message: "API AlpaTrace funcionando",
-  });
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok" });
 });
 
+app.get("/", (_req, res) => {
+  res.json({ message: "API AlpaTrace funcionando" });
+});
+
+app.use("/api/auth", authRoutes);
+app.use("/api/profiles", profilesRoutes);
 app.use("/api/marketplace", marketplaceRoutes);
 app.use("/api/lotes", lotesRoutes);
 app.use("/api/solicitudes", solicitudesRoutes);
