@@ -105,8 +105,8 @@ export function Marketplace({ onBack }: { onBack?: () => void }) {
         image: dbLot.color.toLowerCase().includes("blan")
           ? "https://images.unsplash.com/photo-1574883140236-2e2cb0835792?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900"
           : "https://images.unsplash.com/photo-1598871956222-26b66d6559fe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900",
-        category: (dbLot.cat || "Fibra") as any,
-        quality: (dbLot.grade === "A+" || dbLot.grade === "A" ? "Certificada" : dbLot.grade === "B" ? "Validada" : "En revisión") as any,
+        category: (dbLot.cat || "Fibra") as LotExt["category"],
+        quality: (dbLot.grade === "A+" || dbLot.grade === "A" ? "Certificada" : dbLot.grade === "B" ? "Validada" : "En revisión") as LotExt["quality"],
         color: dbLot.color,
         qty: dbLot.lb,
         region: dbLot.origin,

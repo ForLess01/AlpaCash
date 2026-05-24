@@ -118,9 +118,10 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
     setLoading(true);
     try {
       // Escribir cookie de bypass de demo
+      // eslint-disable-next-line react-hooks/immutability
       document.cookie = `alpacash_demo_session=${role}; path=/; max-age=86400; SameSite=Lax`;
       router.push(ROLE_TO_ROUTE[role]);
-    } catch (err) {
+    } catch {
       setError("Error al iniciar modo demo.");
       setLoading(false);
     }

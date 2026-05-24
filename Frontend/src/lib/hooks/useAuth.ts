@@ -28,6 +28,7 @@ export function useAuth(): AuthState {
       const match = document.cookie.split("; ").find((row) => row.startsWith("alpacash_demo_session="));
       if (match) {
         const val = match.split("=")[1] as Role;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setUser({
           id: "demo-uuid-1234-5678",
           email: `${val}@alpacash.pe`,
@@ -35,7 +36,7 @@ export function useAuth(): AuthState {
           user_metadata: {},
           aud: "authenticated",
           created_at: new Date().toISOString(),
-        } as any);
+        } as unknown as User);
         setRole(val);
         setEstado("activo");
         setNombre(`Demo ${val.charAt(0).toUpperCase() + val.slice(1)}`);
