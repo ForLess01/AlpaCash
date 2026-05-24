@@ -4,6 +4,12 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { Plus, ArrowUpRight, Camera, Calendar } from "lucide-react";
 import { DashShell, ArtCard, SectionLabel, SideNav } from "./DashShell";
 import { AlpacaHead, ScissorsShear, ReceiptPaper, ScaleBalance, ChartSparkle, StampSeal, MountainPath, LotTag, HandHold, FiberBall } from "../icons/AlpaIcons";
+import { LotesTab } from "./tabs/producer/LotesTab";
+import { OfertasTab } from "./tabs/producer/OfertasTab";
+import { EsquilaTab } from "./tabs/producer/EsquilaTab";
+import { PagosTab } from "./tabs/producer/PagosTab";
+import { CapacitacionTab } from "./tabs/producer/CapacitacionTab";
+import { FinanciamientoTab } from "./tabs/producer/FinanciamientoTab";
 
 const trend = Array.from({ length: 14 }).map((_, i) => ({ d: `D${i + 1}`, v: +(28 + Math.sin(i / 2) * 2 + i * 0.3).toFixed(2) }));
 
@@ -27,6 +33,7 @@ export function ProducerDashboard({ onBack, onOpenLot, onNewLot }: { onBack: () 
     { key: "esquila", label: "Calendario esquila", icon: <ScissorsShear size={18} /> },
     { key: "pagos", label: "Pagos", icon: <ReceiptPaper size={18} /> },
     { key: "capacitacion", label: "Capacitación", icon: <ChartSparkle size={18} /> },
+    { key: "financiamiento", label: "Financiamiento", icon: <ScaleBalance size={18} /> },
   ];
 
   return (
@@ -55,6 +62,17 @@ export function ProducerDashboard({ onBack, onOpenLot, onNewLot }: { onBack: () 
         </div>
       </div>
 
+      {tab !== "inicio" ? (
+        <>
+          {tab === "lotes" && <LotesTab onNewLot={onNewLot} onOpenLot={onOpenLot} />}
+          {tab === "ofertas" && <OfertasTab />}
+          {tab === "esquila" && <EsquilaTab />}
+          {tab === "pagos" && <PagosTab />}
+          {tab === "capacitacion" && <CapacitacionTab />}
+          {tab === "financiamiento" && <FinanciamientoTab />}
+        </>
+      ) : (
+        <>
       {/* KPIs row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
@@ -211,6 +229,8 @@ export function ProducerDashboard({ onBack, onOpenLot, onNewLot }: { onBack: () 
         <span><MountainPath size={14} className="inline mr-1" /> Tinta, Cusco · 4127 msnm</span>
         <span>v1.0 · privado por nivel</span>
       </div>
+        </>
+      )}
     </DashShell>
   );
 }
