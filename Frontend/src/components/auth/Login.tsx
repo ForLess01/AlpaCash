@@ -172,8 +172,8 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
           }
         }
         // Role row exists — account is pending admin activation.
-        await supabase.auth.signOut();
-        setError("Tu cuenta todavía está pendiente de activación. Esperá la validación del equipo.");
+        // Session is preserved; navigate to the dedicated pending page.
+        router.push("/auth/pending");
         return;
       }
 
@@ -255,6 +255,17 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
             <p className="text-sm text-[var(--teal-deep)] bg-[var(--mint)]/30 rounded-xl px-4 py-3">
               {authMessage}
             </p>
+          )}
+
+          {!error && authErrorCode === "no-profile" && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push("/auth/complete-profile")}
+              className="w-full h-11 rounded-full border-[var(--teal-deep)] text-[var(--teal-deep)] hover:bg-[var(--mint)]/20"
+            >
+              Completar perfil
+            </Button>
           )}
 
           <Button
