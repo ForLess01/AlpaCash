@@ -7,6 +7,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
+import { toast } from "sonner";
 
 export type CartLot = {
   id: string;
@@ -40,6 +41,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const stored = window.localStorage.getItem(STORAGE_KEY);
       return stored ? (JSON.parse(stored) as CartLot[]) : [];
     } catch {
+      try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+      toast.error("Error al recuperar el carrito — se reinició");
       return [];
     }
   });

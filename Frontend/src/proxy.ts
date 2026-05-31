@@ -101,12 +101,17 @@ export async function proxy(request: NextRequest) {
     const expectedRole = ROUTE_TO_ROLE[routeSegment];
     const userRole = profile.rol as Role;
 
-    if (expectedRole && userRole !== expectedRole) {
-      const correctRoute = ROLE_TO_ROUTE[userRole];
-      if (correctRoute) {
-        const redirectUrl = request.nextUrl.clone();
-        redirectUrl.pathname = correctRoute;
-        return NextResponse.redirect(redirectUrl);
+    if (expectedRole) {
+      if (userRole == null || userRole !== expectedRole) {
+        const correctRoute = userRole ? ROLE_TO_ROUTE[userRole] : undefined;
+        if (correctRoute) {
+          const redirectUrl = request.nextUrl.clone();
+          redirectUrl.pathname = correctRoute;
+          return NextResponse.redirect(redirectUrl);
+        }
+        const loginUrl = request.nextUrl.clone();
+        loginUrl.pathname = "/auth/login";
+        return NextResponse.redirect(loginUrl);
       }
     }
   }

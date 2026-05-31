@@ -42,18 +42,6 @@ type Filters = {
 };
 
 
-const ALL_LOTS: Lot[] = [
-  { code: "AC-2048", image: "https://images.unsplash.com/photo-1776951647310-5ff90544136a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900", category: "Baby", quality: "Validada", color: "Blanco", qty: 120, region: "Puno", price: 33.5, marketPrice: 32.5, status: "Disponible", rating: 4.8, verifiedProducer: true },
-  { code: "AC-2061", image: "https://images.unsplash.com/photo-1770122985572-ca890ef5ecf3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900", category: "Súper Baby", quality: "Certificable", color: "Beige", qty: 85, region: "Cusco", price: 42.0, marketPrice: 41.0, status: "Disponible", rating: 4.9, verifiedProducer: true },
-  { code: "AC-2073", image: "https://images.unsplash.com/photo-1598871956222-26b66d6559fe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900", category: "Fleece", quality: "Validada", color: "Marrón claro", qty: 210, region: "Arequipa", price: 23.5, marketPrice: 24.0, status: "Reservado", rating: 4.5, verifiedProducer: true },
-  { code: "AC-2089", image: "https://images.unsplash.com/photo-1670764732222-e787bccd934f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900", category: "Medium Fleece", quality: "En revisión", color: "Mixto", qty: 160, region: "Puno", price: 18.0, marketPrice: 18.5, status: "En validación", rating: 4.2, verifiedProducer: false },
-  { code: "AC-2102", image: "https://images.unsplash.com/photo-1715890317755-e661735daf6c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900", category: "Baby", quality: "Certificada", color: "Negro", qty: 95, region: "Puno", price: 35.0, marketPrice: 32.5, status: "Disponible", rating: 5.0, verifiedProducer: true },
-  { code: "AC-2118", image: "https://images.unsplash.com/photo-1598871956091-1b9681ae2bf0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900", category: "Fleece", quality: "Validada", color: "Beige", qty: 140, region: "Cusco", price: 24.5, marketPrice: 24.0, status: "Disponible", rating: 4.6, verifiedProducer: true },
-  { code: "AC-2124", image: "https://images.unsplash.com/photo-1598871956222-26b66d6559fe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900", category: "Huarizo", quality: "Validada", color: "Marrón", qty: 280, region: "Arequipa", price: 13.5, marketPrice: 14.0, status: "Disponible", rating: 4.3, verifiedProducer: true },
-  { code: "AC-2131", image: "https://images.unsplash.com/photo-1574883140236-2e2cb0835792?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900", category: "Súper Baby", quality: "Validada", color: "Blanco", qty: 60, region: "Puno", price: 40.5, marketPrice: 41.0, status: "Disponible", rating: 4.7, verifiedProducer: true },
-  { code: "AC-2147", image: "https://images.unsplash.com/photo-1773671214583-f366f3ee02b3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900", category: "Gruesa", quality: "En revisión", color: "Mixto", qty: 320, region: "Puno", price: 9.0, marketPrice: 9.5, status: "En validación", rating: 4.0, verifiedProducer: false },
-];
-
 const CATEGORIES: Lot["category"][] = ["Súper Baby", "Baby", "Fleece", "Medium Fleece", "Huarizo", "Gruesa"];
 const COLORS = ["Blanco", "Beige", "Marrón claro", "Marrón", "Negro", "Mixto"];
 const REGIONS = ["Puno", "Cusco", "Arequipa", "Apurímac"];
@@ -121,7 +109,7 @@ export function Marketplace({ onBack }: { onBack?: () => void }) {
         verifiedProducer: true,
       }));
     }
-    return ALL_LOTS;
+    return [];
   }, [dbLots]);
 
   const isInCart = (code: string) => cartItems.some((c) => c.id === code);

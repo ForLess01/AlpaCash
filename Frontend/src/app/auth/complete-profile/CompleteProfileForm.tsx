@@ -26,18 +26,25 @@ const ROLE_OPTIONS: { id: Exclude<Role, "admin">; icon: typeof Sprout; label: st
 ];
 
 export function CompleteProfileForm({
-  userId,
+  // userId is accepted for interface compatibility but not used in the RPC call —
+  // create_profile_with_role is SECURITY DEFINER and reads auth.uid() internally.
   email,
   fullName,
   avatarUrl,
+  initialRole,
 }: {
   userId: string;
   email: string;
   fullName: string;
   avatarUrl: string | null;
+  /** Pre-fills the role selector when profiles.rol already exists but the
+   *  role-specific row is missing (email-confirmation gap recovery). */
+  initialRole?: Exclude<Role, "admin">;
 }) {
   const router = useRouter();
-  const [role, setRole] = useState<Exclude<Role, "admin">>("productor");
+  // Use initialRole when provided (email-confirm recovery) so the user
+  // sees the role they chose during registration pre-selected.
+  const [role, setRole] = useState<Exclude<Role, "admin">>(initialRole ?? "productor");
   const [name, setName] = useState(fullName);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,52 +88,32 @@ export function CompleteProfileForm({
     try {
       const supabase = createClient();
 
-      const { error: profileError } = await supabase.from("profiles").upsert(
-        { id: userId, nombre: normalizedName, email, rol: role, avatar_url: avatarUrl },
-        { onConflict: "id" }
-      );
+      // Atomic profile creation — single RPC call creates both the
+      // profiles row and the role-specific row in one transaction.
+      // On any DB failure no partial records remain.
+      const { error: rpcError } = await supabase.rpc("create_profile_with_role", {
+        p_nombre: normalizedName,
+        p_email: email,
+        p_rol: role,
+        p_avatar_url: avatarUrl ?? null,
+        ...(role === "productor"
+          ? {
+              p_dni: sanitizeDigits(productorData.dni, 8) || null,
+              p_comunidad: normalizeSpaces(productorData.community) || null,
+              p_region: normalizeSpaces(productorData.region) || "Puno",
+              p_provincia: normalizeSpaces(productorData.province) || null,
+            }
+          : {
+              p_razon_social: normalizeSpaces(empresaData.razonSocial) || normalizedName,
+              p_ruc: sanitizeDigits(empresaData.ruc, 11) || null,
+              p_rubro: role === "empresa" ? normalizeSpaces(empresaData.sector) || null : null,
+              p_direccion: role === "empresa" ? normalizeSpaces(empresaData.address) || null : null,
+            }),
+      });
 
-      if (profileError) {
-        setError(`No se pudo guardar tu perfil: ${profileError.message}`);
+      if (rpcError) {
+        setError(`No se pudo crear el perfil: ${rpcError.message}`);
         return;
-      }
-
-      if (role === "productor") {
-        const { error: e } = await supabase.from("productores").insert({
-          profile_id: userId,
-          codigo_productor: `AC-${Date.now().toString(36).toUpperCase()}`,
-          dni_ruc: sanitizeDigits(productorData.dni, 8) || null,
-          nombre_asociacion: normalizeSpaces(productorData.community) || null,
-          comunidad: normalizeSpaces(productorData.community) || null,
-          provincia: normalizeSpaces(productorData.province) || null,
-          region: normalizeSpaces(productorData.region) || "Puno",
-        });
-        if (e) {
-          setError(`Perfil creado pero faltó guardar datos de productor: ${e.message}`);
-          return;
-        }
-      } else if (role === "empresa") {
-        const { error: e } = await supabase.from("empresas").insert({
-          profile_id: userId,
-          ruc: sanitizeDigits(empresaData.ruc, 11) || null,
-          razon_social: normalizeSpaces(empresaData.razonSocial) || normalizedName,
-          rubro: normalizeSpaces(empresaData.sector) || null,
-          direccion: normalizeSpaces(empresaData.address) || null,
-        });
-        if (e) {
-          setError(`Perfil creado pero faltó guardar datos de empresa: ${e.message}`);
-          return;
-        }
-      } else if (role === "financiera") {
-        const { error: e } = await supabase.from("entidades_financieras").insert({
-          profile_id: userId,
-          razon_social: normalizeSpaces(empresaData.razonSocial) || normalizedName,
-          ruc: sanitizeDigits(empresaData.ruc, 11) || null,
-        });
-        if (e) {
-          setError(`Perfil creado pero faltó guardar datos de la entidad: ${e.message}`);
-          return;
-        }
       }
 
       router.push(ROLE_TO_ROUTE[role]);

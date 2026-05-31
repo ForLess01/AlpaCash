@@ -19,6 +19,9 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey, {
 });
 
 export function createSupabaseUserClient(accessToken: string) {
+  if (!accessToken || accessToken.trim() === "") {
+    throw new Error("Access token is required");
+  }
   return createClient(supabaseUrl, supabasePublishableKey, {
     global: {
       headers: {

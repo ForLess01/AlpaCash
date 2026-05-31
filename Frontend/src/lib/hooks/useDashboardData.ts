@@ -141,9 +141,35 @@ export function useProducerLots() {
     async function load() {
       setLoading(true);
       const supabase = createClient();
+
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      if (!userId) {
+        if (!cancelled) {
+          setLots([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      const { data: producerRow } = await supabase
+        .from("productores")
+        .select("id")
+        .eq("profile_id", userId)
+        .single();
+
+      if (!producerRow) {
+        if (!cancelled) {
+          setLots([]);
+          setLoading(false);
+        }
+        return;
+      }
+
       const { data, error } = await supabase
         .from("lotes_fibra")
         .select("id,codigo_lote,peso_libras,precio_por_libra,color,estado,ubicacion_general,fecha_esquila,categorias_fibra(nombre)")
+        .eq("productor_id", producerRow.id)
         .order("created_at", { ascending: false });
 
       if (!cancelled) {
@@ -188,6 +214,7 @@ export function useMarketplaceLots() {
       const { data, error } = await supabase
         .from("lotes_fibra")
         .select("id,codigo_lote,peso_libras,precio_por_libra,color,ubicacion_general,estado,productor_id,categorias_fibra(nombre,nivel_calidad),productores(id,nombre_asociacion,comunidad)")
+        .eq("estado", "disponible")
         .order("created_at", { ascending: false });
 
       if (!cancelled) {
@@ -264,13 +291,13 @@ export function usePayments() {
               
               const price = asNumber(row.precio_por_libra);
               const lbs = asNumber(lot?.peso_libras);
-              
+
               return {
                 id: asString(row.id, `TX-${index + 1}`),
                 date: asString(row.created_at, "Sin fecha"),
                 lot: asString(lot?.codigo_lote, "Sin lote"),
                 buyer: asString(company?.razon_social || profile?.nombre, "Comprador"),
-                amount: price * lbs,
+                amount: asNumber(price * lbs),
                 lb: lbs,
                 status: "en proceso",
               };
@@ -488,11 +515,11 @@ export function usePurchaseOrders() {
               
               const price = asNumber(row.precio_por_libra);
               const lbs = asNumber(lot?.peso_libras);
-              
+
               return {
                 id: asString(row.id, `PO-${index + 1}`),
                 supplier: asString(producer?.nombre_asociacion || producer?.comunidad, "Proveedor verificado"),
-                total: price * lbs,
+                total: asNumber(price * lbs),
                 status: "En proceso",
                 eta: asString(row.created_at, "Sin ETA"),
               };
@@ -670,7 +697,7 @@ export function useVouchers() {
               return {
                 id: asString(row.id, `voucher-${index}`),
                 title: asString(lot?.codigo_lote, "Voucher"),
-                amountLabel: `S/ ${(price * lbs).toLocaleString()}`,
+                amountLabel: `S/ ${asNumber(price * lbs).toLocaleString()}`,
                 status: "Activo",
               };
             })

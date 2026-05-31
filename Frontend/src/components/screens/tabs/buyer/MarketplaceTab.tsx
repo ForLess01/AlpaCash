@@ -40,7 +40,18 @@ export function MarketplaceTab({ onOpenLot }: { onOpenLot?: (lot: DisplayLot) =>
   }, [allLots, search, catFilter, originFilter, gradeFilter, sort]);
 
   const handleAdd = (l: Lot) => {
-    addItem({ id: l.id, cat: l.cat, origin: l.origin, lb: l.lb, price: l.price, prod: l.prod, grade: l.grade });
+    addItem({
+      id: l.id,
+      cat: l.cat,
+      origin: l.origin,
+      lb: l.lb,
+      price: l.price,
+      prod: l.prod,
+      grade: l.grade,
+      // Propagate DB identifiers so CartDrawer can validate checkout FKs
+      recordId: l.recordId,
+      productorId: l.productorId,
+    });
     setAdded((prev) => new Set([...prev, l.id]));
   };
 

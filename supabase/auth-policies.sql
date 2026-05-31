@@ -1,18 +1,41 @@
 -- ============================================================
 -- AlpaCash · Auth Trigger + Row Level Security Policies
--- Ejecutar en Supabase SQL Editor DESPUÉS del schema principal.
+-- Ejecutar en Supabase SQL Editor DESPUÉS de foundation.sql.
 -- ============================================================
 -- Este archivo es IDEMPOTENTE: se puede correr varias veces.
 -- Usa `drop ... if exists` antes de cada `create` para evitar conflictos.
 -- ============================================================
+--
+-- CANONICAL ROLE SET (aligned with foundation.sql):
+--   productor · empresa · financiera · admin
+--   "comprador" es un alias de capa de aplicación para "empresa".
+--   Internamente la DB solo conoce 'empresa'. El rol 'capacitador'
+--   está DEPRECADO — no se otorga acceso en ninguna política.
+--
+-- PROFILE CREATION PATHS:
+--   A) Traditional signup (email+password): raw_user_meta_data includes
+--      the role. This trigger creates the profiles row only.
+--      The role-specific row (productores/empresas/entidades_financieras)
+--      is created atomically via the create_profile_with_role RPC when
+--      the user completes the onboarding wizard.
+--   B) OAuth (Google): trigger does nothing (no role in metadata).
+--      CompleteProfileForm calls create_profile_with_role RPC which
+--      creates BOTH the profiles row AND the role-specific row atomically.
+-- ============================================================
 
 
 -- ------------------------------------------------------------
--- 1) TRIGGER: AUTO-CREAR PROFILE AL REGISTRARSE
+-- 1) TRIGGER: AUTO-CREAR PROFILE AL REGISTRARSE (traditional path)
 -- ------------------------------------------------------------
 -- Cuando un usuario nuevo se crea en auth.users (via signUp del cliente),
 -- creamos automáticamente su row en public.profiles tomando el rol
 -- desde raw_user_meta_data->>'role' que el frontend envía en signUp options.
+--
+-- NOTE: auth.uid() is NULL in trigger context, so we cannot call
+-- create_profile_with_role RPC here (it requires auth.uid()). This
+-- trigger handles the profiles row for traditional signup. The
+-- role-specific row is created by create_profile_with_role at the
+-- app layer (wizard completion step).
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -25,13 +48,21 @@ declare
 begin
     -- Si no hay rol en el metadata (caso OAuth/Google), NO creamos profile.
     -- El cliente debe redirigir al usuario a /auth/complete-profile y crear
-    -- su profile + tabla rol-específica desde ahí.
+    -- su profile + tabla rol-específica a través del RPC create_profile_with_role.
     if chosen_role is null then
+        return new;
+    end if;
+
+    -- Validar que el rol sea canónico antes de persistirlo.
+    -- 'capacitador' y otros roles no canónicos se ignoran.
+    if chosen_role not in ('productor', 'empresa', 'financiera', 'admin') then
         return new;
     end if;
 
     -- Signup tradicional (email + password con wizard): el frontend envía
     -- el rol en options.data, lo persistimos automáticamente.
+    -- La fila en productores/empresas/entidades_financieras se crea
+    -- via create_profile_with_role desde el paso de completar el perfil.
     insert into public.profiles (id, nombre, email, rol, telefono, avatar_url)
     values (
         new.id,
@@ -40,7 +71,8 @@ begin
         chosen_role,
         new.raw_user_meta_data->>'phone',
         new.raw_user_meta_data->>'avatar_url'
-    );
+    )
+    on conflict (id) do nothing;  -- safe if RPC already created the row
     return new;
 end;
 $$;
@@ -192,9 +224,12 @@ create policy "notif_update_own"
 -- ============================================================
 -- FIN
 -- ============================================================
--- Después de correr este archivo:
+-- Después de correr foundation.sql y luego este archivo:
 -- 1. Cualquier signUp via frontend creará profile automáticamente.
--- 2. RLS está activo: usuarios solo ven/modifican sus propios datos.
--- 3. Admins pueden ver todos los profiles.
--- 4. Marketplace de lotes es visible para cualquier authenticated.
+-- 2. OAuth/Google users van a /auth/complete-profile → RPC atómico.
+-- 3. RLS está activo: usuarios solo ven/modifican sus propios datos.
+-- 4. Admins pueden ver todos los profiles.
+-- 5. Marketplace de lotes es visible para cualquier authenticated.
+-- 6. Roles canónicos: productor, empresa, financiera, admin.
+--    "capacitador" está deprecado y no tiene acceso.
 -- ============================================================

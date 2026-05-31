@@ -36,10 +36,14 @@ export async function getMe(req: AuthenticatedRequest, res: Response) {
 export async function createProfile(req: AuthenticatedRequest, res: Response) {
   const { rol, nombre } = req.body;
 
-  const validRoles = ["productor", "empresa", "admin", "capacitador"];
+  // Self-service role set — aligned with create_profile_with_role RPC contract.
+  // "admin" is excluded: admin accounts are created by existing admins, not
+  // through self-registration (matches the SQL RPC which also blocks admin).
+  // "capacitador" is deprecated and MUST NOT be accepted.
+  const validRoles = ["productor", "empresa", "financiera"];
   if (!rol || !validRoles.includes(rol)) {
-    return res.status(400).json({
-      message: "Rol inválido. Valores permitidos: productor, empresa, admin, capacitador",
+    return res.status(403).json({
+      message: "Rol inválido o no autorizado. Valores permitidos: productor, empresa, financiera",
     });
   }
 
@@ -70,6 +74,9 @@ export async function createProfile(req: AuthenticatedRequest, res: Response) {
     .single();
 
   if (error) {
+    if (error.code === "23505") {
+      return res.status(409).json({ message: "El perfil ya existe" });
+    }
     return res.status(500).json({
       message: "Error al crear el perfil",
       error: error.message,

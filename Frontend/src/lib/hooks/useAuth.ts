@@ -20,33 +20,14 @@ export function useAuth(): AuthState {
   const [role, setRole] = useState<Role | null>(null);
   const [estado, setEstado] = useState<Estado | null>(null);
   const [nombre, setNombre] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Initialize loading to false when Supabase is not configured — avoids a
+  // synchronous setState inside the effect body which triggers cascading renders.
+  // When configured, loading starts as true and is resolved by the auth callbacks.
+  const [loading, setLoading] = useState(() => getSupabaseEnv().isConfigured);
 
   useEffect(() => {
-    // Comprobar cookie de bypass demo en el cliente
-    if (typeof window !== "undefined") {
-      const match = document.cookie.split("; ").find((row) => row.startsWith("alpacash_demo_session="));
-      if (match) {
-        const val = match.split("=")[1] as Role;
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setUser({
-          id: "demo-uuid-1234-5678",
-          email: `${val}@alpacash.pe`,
-          app_metadata: {},
-          user_metadata: {},
-          aud: "authenticated",
-          created_at: new Date().toISOString(),
-        } as unknown as User);
-        setRole(val);
-        setEstado("activo");
-        setNombre(`Demo ${val.charAt(0).toUpperCase() + val.slice(1)}`);
-        setLoading(false);
-        return;
-      }
-    }
-
     if (!getSupabaseEnv().isConfigured) {
-      setLoading(false);
+      // loading is already false from the useState initializer above
       return;
     }
 
@@ -106,13 +87,12 @@ export function useAuth(): AuthState {
   }, []);
 
   const signOut = useCallback(async () => {
-    if (typeof window !== "undefined") {
-      document.cookie = "alpacash_demo_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-      window.location.href = "/auth/login";
-    }
     if (getSupabaseEnv().isConfigured) {
       const supabase = createClient();
       await supabase.auth.signOut();
+    }
+    if (typeof window !== "undefined") {
+      window.location.href = "/auth/login";
     }
   }, []);
 

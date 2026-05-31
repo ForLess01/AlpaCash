@@ -41,7 +41,8 @@ export async function verifyToken(
     req.supabaseUser = createSupabaseUserClient(token);
 
     next();
-  } catch {
+  } catch (error) {
+    console.error("Auth middleware error:", error);
     return res.status(500).json({ message: "Error de autenticación" });
   }
 }
@@ -103,6 +104,7 @@ export async function authMiddleware(
 
     next();
   } catch (error) {
+    console.error("Auth middleware error:", error);
     return res.status(500).json({
       message: "Error de autenticación",
     });

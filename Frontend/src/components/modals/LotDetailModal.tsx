@@ -19,6 +19,10 @@ export type DisplayLot = {
   price: number;
   prod: string;
   grade?: string;
+  /** lotes_fibra.id — REQUIRED for checkout; absent means lot cannot be purchased */
+  recordId?: string;
+  /** productores.id — REQUIRED for checkout FK on solicitudes_compra */
+  productorId?: string;
 };
 
 const fallbackLot: DisplayLot = {
@@ -53,6 +57,9 @@ export function LotDetailModal({ open, onClose, lot }: { open: boolean; onClose:
       price: item.price,
       prod: item.prod,
       grade: item.grade,
+      // Propagate DB identifiers required for checkout FK validation
+      recordId: item.recordId,
+      productorId: item.productorId,
     });
   };
 

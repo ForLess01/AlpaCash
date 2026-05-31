@@ -3,7 +3,10 @@ import { AuthenticatedRequest } from "../../middlewares/auth.middleware";
 
 export async function createLote(req: AuthenticatedRequest, res: Response) {
   try {
-    const supabase = req.supabaseUser!;
+    if (!req.supabaseUser) {
+      return res.status(401).json({ message: "No autorizado" });
+    }
+    const supabase = req.supabaseUser;
 
     const {
       categoria_id,
@@ -16,10 +19,19 @@ export async function createLote(req: AuthenticatedRequest, res: Response) {
       descripcion,
     } = req.body;
 
+    if (!peso_libras || !precio_por_libra || !categoria_id) {
+      return res.status(400).json({ message: "Campos requeridos: peso_total, precio_por_libra, categoria" });
+    }
+
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "No autorizado" });
+    }
+
     const { data: productor, error: productorError } = await supabase
       .from("productores")
       .select("id")
-      .eq("profile_id", req.user!.id)
+      .eq("profile_id", userId)
       .single();
 
     if (productorError || !productor) {
@@ -62,12 +74,20 @@ export async function createLote(req: AuthenticatedRequest, res: Response) {
 }
 
 export async function getMisLotes(req: AuthenticatedRequest, res: Response) {
-  const supabase = req.supabaseUser!;
+  if (!req.supabaseUser) {
+    return res.status(401).json({ message: "No autorizado" });
+  }
+  const supabase = req.supabaseUser;
+
+  const userId = req.user?.id;
+  if (!userId) {
+    return res.status(401).json({ message: "No autorizado" });
+  }
 
   const { data: productor, error: productorError } = await supabase
     .from("productores")
     .select("id")
-    .eq("profile_id", req.user!.id)
+    .eq("profile_id", userId)
     .single();
 
   if (productorError || !productor) {

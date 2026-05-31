@@ -12,7 +12,11 @@ import adminRoutes from "./modules/admin/admin.routes";
 
 const app = express();
 
-const allowedOrigin = process.env.FRONTEND_URL || (process.env.NODE_ENV !== "production" ? "http://localhost:3000" : undefined);
+if (process.env.NODE_ENV === "production" && !process.env.FRONTEND_URL) {
+  throw new Error("FRONTEND_URL must be set in production");
+}
+
+const allowedOrigin = process.env.FRONTEND_URL ?? "http://localhost:3000";
 
 app.use(
   cors({
@@ -22,7 +26,9 @@ app.use(
 );
 
 app.use(express.json());
-app.use(morgan("dev"));
+if (process.env.NODE_ENV !== "production") {
+  app.use(morgan("dev"));
+}
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });

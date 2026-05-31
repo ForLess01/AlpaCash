@@ -9,7 +9,7 @@ import { Label } from "../ui/label";
 import { Mail, Lock, User, MapPin, Building2, Sprout, Factory, Landmark, ArrowRight, Check } from "lucide-react";
 import type { RoleId } from "./RoleSelector";
 import { createClient } from "@/lib/supabase/client";
-import { ROLE_ID_TO_ROLE, type Role } from "@/lib/supabase/types";
+import { ROLE_ID_TO_ROLE } from "@/lib/supabase/types";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { getAuthCallbackUrl } from "@/lib/supabase/redirect";
 import {
@@ -68,7 +68,7 @@ export function Register({
   async function handleGoogle() {
     setError(null);
     if (!env.isConfigured) {
-      setError("Falta configurar Supabase en Vercel o en Frontend/.env.local.");
+      setError("Falta configurar Supabase. Revisá Frontend/.env.local o las variables de entorno del servicio.");
       return;
     }
     setLoading(true);
@@ -96,7 +96,7 @@ export function Register({
     setError(null);
 
     if (!env.isConfigured) {
-      setError("Falta configurar Supabase en Vercel o en Frontend/.env.local.");
+      setError("Falta configurar Supabase. Revisá Frontend/.env.local o las variables de entorno del servicio.");
       return;
     }
 
@@ -169,12 +169,45 @@ export function Register({
         return;
       }
 
-      // The handle_new_user trigger already created public.profiles.
-      // Now insert role-specific row with wizard data.
-      const detailError = await insertRoleDetail(supabase, userId, mappedRole, fullName);
-      if (detailError) {
-        setError(`Cuenta creada pero faltó guardar tu perfil: ${detailError}`);
-        return;
+      // The handle_new_user trigger already created the public.profiles row.
+      //
+      // If a session exists (email auto-confirm enabled), call the atomic RPC
+      // to create the role-specific row in the same transaction — matching the
+      // same model used by CompleteProfileForm for OAuth users.
+      //
+      // If no session (email confirmation pending), skip the role-table insert
+      // for now: the user confirms email, logs in, and completes their profile.
+      if (data.session) {
+        const rpcArgs = {
+          p_nombre: fullName,
+          p_email: email,
+          p_rol: mappedRole,
+          p_avatar_url: null as string | null,
+          ...(mappedRole === "productor"
+            ? {
+                p_dni: sanitizeDigits(formData.dni, 8) || null,
+                p_comunidad: normalizeSpaces(formData.community) || null,
+                p_region: normalizeSpaces(formData.region) || "Puno",
+                p_provincia: normalizeSpaces(formData.province) || null,
+              }
+            : mappedRole === "empresa"
+            ? {
+                p_razon_social: normalizeSpaces(formData.razonSocial) || fullName,
+                p_ruc: sanitizeDigits(formData.ruc, 11) || null,
+                p_rubro: normalizeSpaces(formData.sector) || null,
+                p_direccion: normalizeSpaces(formData.address) || null,
+              }
+            : {
+                // financiera: razon_social + ruc from form (sector/address not collected)
+                p_razon_social: normalizeSpaces(formData.razonSocial) || fullName,
+                p_ruc: sanitizeDigits(formData.ruc, 11) || null,
+              }),
+        };
+        const { error: rpcError } = await supabase.rpc("create_profile_with_role", rpcArgs);
+        if (rpcError) {
+          setError(`Cuenta creada pero faltó guardar tu perfil: ${rpcError.message}`);
+          return;
+        }
       }
 
       await supabase.auth.signOut();
@@ -182,49 +215,6 @@ export function Register({
     } finally {
       setLoading(false);
     }
-  }
-
-  async function insertRoleDetail(
-    supabase: ReturnType<typeof createClient>,
-    userId: string,
-    rol: Role,
-    fullName: string,
-  ): Promise<string | null> {
-    const dni = sanitizeDigits(formData.dni, 8);
-    const ruc = sanitizeDigits(formData.ruc, 11);
-
-    if (rol === "productor") {
-        const { error: e } = await supabase.from("productores").insert({
-          profile_id: userId,
-          codigo_productor: `AC-${Date.now().toString(36).toUpperCase()}`,
-          dni_ruc: dni || null,
-          nombre_asociacion: normalizeSpaces(formData.community) || null,
-          comunidad: normalizeSpaces(formData.community) || null,
-          provincia: normalizeSpaces(formData.province) || null,
-          region: normalizeSpaces(formData.region) || "Puno",
-        });
-      return e?.message ?? null;
-    }
-    if (rol === "empresa") {
-        const { error: e } = await supabase.from("empresas").insert({
-          profile_id: userId,
-          ruc: ruc || null,
-          razon_social: normalizeSpaces(formData.razonSocial) || fullName,
-          rubro: normalizeSpaces(formData.sector) || null,
-          direccion: normalizeSpaces(formData.address) || null,
-        });
-      return e?.message ?? null;
-    }
-    if (rol === "financiera") {
-        const { error: e } = await supabase.from("entidades_financieras").insert({
-          profile_id: userId,
-          razon_social: normalizeSpaces(formData.razonSocial) || fullName,
-          ruc: ruc || null,
-        });
-      return e?.message ?? null;
-    }
-    // admin: no extra table to insert
-    return null;
   }
 
   function handleNext(e: React.FormEvent) {

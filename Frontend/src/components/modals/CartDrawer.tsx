@@ -44,23 +44,31 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         throw new Error("No encontramos tu registro de empresa. Verificá que tu perfil esté completo.");
       }
 
-      const dbItems = items.filter((it) => it.recordId && it.productorId);
+      // Spec: abort entire checkout if ANY item is missing DB identifiers.
+      // Partial inserts with valid items risk silent FK violations on the
+      // filtered-out items and corrupt transaction state.
+      const missingIds = items.some((it) => !it.recordId || !it.productorId);
+      if (missingIds) {
+        setCheckoutError(
+          "Algunos lotes no tienen datos completos. Quitálos del carrito e intentá de nuevo."
+        );
+        setCheckoutLoading(false);
+        return;
+      }
 
-      if (dbItems.length > 0) {
-        const inserts = dbItems.map((it) => ({
-          lote_id: it.recordId,
-          empresa_id: empresa.id,
-          productor_id: it.productorId,
-          estado: "pendiente",
-        }));
+      const inserts = items.map((it) => ({
+        lote_id: it.recordId,
+        empresa_id: empresa.id,
+        productor_id: it.productorId,
+        estado: "pendiente",
+      }));
 
-        const { error: insertError } = await supabase
-          .from("solicitudes_compra")
-          .insert(inserts);
+      const { error: insertError } = await supabase
+        .from("solicitudes_compra")
+        .insert(inserts);
 
-        if (insertError) {
-          throw new Error(insertError.message);
-        }
+      if (insertError) {
+        throw new Error(insertError.message);
       }
 
       setSubmitted(true);
