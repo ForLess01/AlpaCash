@@ -1,0 +1,41 @@
+# ============================================================
+# AlpaCash — Render Deploy Configuration
+# ============================================================
+# Official deploy targets:
+#   Frontend (Next.js)  → Render  (this file)
+#   Backend (Express)   → Vercel  (Backend/vercel.json)
+#   Database            → Supabase
+#
+# USAGE
+#   Connect this repo to Render and it will detect this file.
+#   Set the required environment variables in Render → Service
+#   → Environment (see Frontend/.env.example for the full list).
+#
+# FIRST DEPLOY CHECKLIST
+#   1. Run supabase/foundation.sql on your Supabase project.
+#   2. Run supabase/auth-policies.sql immediately after.
+#   3. Deploy Backend to Vercel — note the URL.
+#   4. Create Render web service with settings below.
+#   5. Set all NEXT_PUBLIC_* env vars in Render dashboard.
+# ============================================================
+
+services:
+  - type: web
+    name: alpacash-frontend
+    runtime: node
+    region: oregon
+    rootDir: Frontend
+    buildCommand: pnpm install --frozen-lockfile && pnpm run build
+    startCommand: pnpm run start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # Set these in Render → Service → Environment (do NOT commit real values)
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
