@@ -10,6 +10,14 @@ import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { ROLE_TO_ROUTE } from "@/lib/supabase/types";
 import type { Role } from "@/lib/supabase/types";
+
+// Maps self-service roles to role-specific tables — used to detect the
+// email-confirm gap and redirect to complete-profile instead of blocking.
+const ROLE_TABLE_MAP: Partial<Record<string, string>> = {
+  productor: "productores",
+  empresa: "empresas",
+  financiera: "entidades_financieras",
+};
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { getAuthCallbackUrl } from "@/lib/supabase/redirect";
 import { isValidEmail } from "@/lib/forms/validation";
@@ -37,9 +45,9 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
         : authErrorCode === "cuenta-rechazado"
           ? "Tu cuenta fue rechazada. Contactá al equipo de AlpaCash."
           : authErrorCode === "callback_failed"
-            ? "Falló la autenticación con Google. Intentá de nuevo."
+            ? "Falló la autenticación. Intentá de nuevo."
             : authErrorCode === "missing_code"
-              ? "Faltó el código de autenticación al volver desde Google."
+              ? "Faltó el código de autenticación al volver del proveedor de login."
               : authErrorCode === "no_user"
                 ? "No pudimos recuperar tu usuario luego del login."
                 : authErrorCode === "no-profile"
@@ -49,7 +57,7 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
   async function handleGoogle() {
     setError(null);
     if (!env.isConfigured) {
-      setError("Falta configurar Supabase en Vercel o en Frontend/.env.local.");
+      setError("Falta configurar Supabase. Revisá las variables de entorno del servicio o Frontend/.env.local.");
       return;
     }
     setLoading(true);
@@ -77,7 +85,7 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
     setError(null);
 
     if (!env.isConfigured) {
-      setError("Falta configurar Supabase en Vercel o en Frontend/.env.local.");
+      setError("Falta configurar Supabase. Revisá las variables de entorno del servicio o Frontend/.env.local.");
       return;
     }
     if (!isValidEmail(email)) {
@@ -109,7 +117,7 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
     setError(null);
 
     if (!env.isConfigured) {
-      setError("Falta configurar Supabase en Vercel o en Frontend/.env.local.");
+      setError("Falta configurar Supabase. Revisá las variables de entorno del servicio o Frontend/.env.local.");
       return;
     }
 
@@ -144,8 +152,24 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
       }
 
       if (profile.estado === "pendiente") {
+        // Email-confirm gap recovery: if the role-specific row is still missing,
+        // send the user to complete-profile so the RPC can create it.
+        // Session is active (password login succeeded), so auth.uid() will work.
+        const roleTable = ROLE_TABLE_MAP[profile.rol];
+        if (roleTable) {
+          const { data: roleRow } = await supabase
+            .from(roleTable)
+            .select("id")
+            .eq("profile_id", userId)
+            .maybeSingle();
+          if (!roleRow) {
+            router.push("/auth/complete-profile");
+            return;
+          }
+        }
+        // Role row exists — account is pending admin activation.
         await supabase.auth.signOut();
-        setError("Tu cuenta todavía está pendiente de activación. Revisá tu correo y esperá la validación del equipo.");
+        setError("Tu cuenta todavía está pendiente de activación. Esperá la validación del equipo.");
         return;
       }
 

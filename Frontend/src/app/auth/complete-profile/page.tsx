@@ -25,7 +25,7 @@ export default async function CompleteProfilePage() {
 
   const { data: existing } = await supabase
     .from("profiles")
-    .select("rol")
+    .select("rol, estado")
     .eq("id", user.id)
     .single();
 
@@ -54,6 +54,11 @@ export default async function CompleteProfilePage() {
 
     if (roleRow) {
       // Both profile and role-specific row exist — fully onboarded.
+      // If still pending admin activation, go directly to login with the
+      // activation message rather than bouncing through the dashboard.
+      if (existing?.estado === "pendiente") {
+        redirect("/auth/login?error=cuenta-pendiente");
+      }
       redirect(ROLE_TO_ROUTE[rol]);
     }
 
