@@ -125,12 +125,7 @@ create policy "profiles_update_own"
 drop policy if exists "profiles_admin_select_all" on profiles;
 create policy "profiles_admin_select_all"
     on profiles for select
-    using (
-        exists (
-            select 1 from profiles p
-            where p.id = auth.uid() and p.rol = 'admin'
-        )
-    );
+    using ( public.is_admin() );
 
 
 -- ------------------------------------------------------------

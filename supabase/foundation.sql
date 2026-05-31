@@ -22,10 +22,24 @@
 
 
 -- ------------------------------------------------------------
--- 0) EXTENSIONS
+-- 0) EXTENSIONS & HELPER FUNCTIONS
 -- ------------------------------------------------------------
 create extension if not exists "pgcrypto";
 create extension if not exists "uuid-ossp";
+
+-- Security definer function to avoid infinite recursion in RLS policies
+-- when checking if a user is an admin.
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and rol = 'admin'
+  );
+$$;
 
 
 -- ------------------------------------------------------------

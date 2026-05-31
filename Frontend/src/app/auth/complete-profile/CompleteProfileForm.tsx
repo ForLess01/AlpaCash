@@ -116,6 +116,21 @@ export function CompleteProfileForm({
         return;
       }
 
+      const { data: userResp } = await supabase.auth.getUser();
+      if (userResp.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("estado")
+          .eq("id", userResp.user.id)
+          .single();
+          
+        if (profile?.estado === "pendiente") {
+          await supabase.auth.signOut();
+          router.push("/auth/login?error=cuenta-pendiente");
+          return;
+        }
+      }
+
       router.push(ROLE_TO_ROUTE[role]);
       router.refresh();
     } finally {

@@ -147,7 +147,11 @@ export function Login({ onBack, onRegister }: { onBack?: () => void; onRegister?
         .single();
 
       if (profileError || !profile) {
-        setError("Tu cuenta aún no tiene perfil asignado. Contactá al equipo de AlpaCash.");
+        if (profileError && profileError.code !== 'PGRST116') {
+          setError(`Error DB al cargar perfil: ${profileError.message} (${profileError.code})`);
+          return;
+        }
+        router.push("/auth/complete-profile");
         return;
       }
 
