@@ -15,6 +15,7 @@ import { useMarketplaceLots, type MarketplaceLotRecord } from "@/lib/hooks/useDa
 import { useAuth } from "@/lib/hooks/useAuth";
 import { AccountMenu } from "@/components/shell/AccountMenu";
 import { AuthRequireModal } from "./modals/AuthRequireModal";
+import { toast } from "sonner";
 
 type Lot = {
   code: string;
@@ -117,6 +118,13 @@ export function Marketplace({ onBack }: { onBack?: () => void }) {
   const handleAdd = (l: LotExt) => {
     if (!user) {
       setAuthModalOpen(true);
+      return;
+    }
+    // Block admin role before reaching the cart — spec 4.1
+    if (role === "admin") {
+      toast.error("Los administradores no pueden realizar compras en el marketplace.", {
+        description: "Esta función es exclusiva para compradores registrados.",
+      });
       return;
     }
     if (isInCart(l.code)) return;
@@ -322,7 +330,7 @@ export function Marketplace({ onBack }: { onBack?: () => void }) {
           {loading && (
             <div className="mb-5 p-4 rounded-2xl bg-[var(--gold)]/20 border-2 border-[var(--ink)] flex items-center justify-center gap-3 text-sm text-[var(--ink)]">
               <span className="w-2 h-2 rounded-full bg-[var(--terracotta)] animate-ping" />
-              Sincronizando lotes en tiempo real con Supabase...
+              Sincronizando lotes en tiempo real...
             </div>
           )}
 

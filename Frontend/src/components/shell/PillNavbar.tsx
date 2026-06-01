@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Menu, X, Globe, Search } from "lucide-react";
@@ -38,13 +40,25 @@ export function PillNavbar({
 
   return (
     <>
-      {/* Capa de fondo desenfocado detrás de los elementos flotantes cuando se hace scroll */}
+      {/* Vertical fade/blur behind floating nav elements — fades to transparent
+          so the hard rectangular edge is replaced with a soft gradient veil.
+          --ivory = #f4ede0; values are used directly for reliable cross-browser
+          gradient rendering with opacity control. */}
       <div
-        className={`fixed top-0 left-0 right-0 h-20 z-[45] transition-all duration-300 pointer-events-none ${
-          scrolled
-            ? "bg-[var(--ivory)]/75 backdrop-blur-md border-b border-[var(--border)] opacity-100"
-            : "opacity-0"
+        className={`fixed top-0 left-0 right-0 z-[45] pointer-events-none transition-opacity duration-300 ${
+          scrolled ? "opacity-100" : "opacity-0"
         }`}
+        style={{
+          height: "7rem",
+          background:
+            "linear-gradient(to bottom, rgba(244,237,224,0.9) 0%, rgba(244,237,224,0.65) 45%, transparent 100%)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          WebkitMaskImage:
+            "linear-gradient(to bottom, black 0%, black 45%, transparent 100%)",
+          maskImage:
+            "linear-gradient(to bottom, black 0%, black 45%, transparent 100%)",
+        }}
       />
 
       {/* Logo top-left + lang top-right */}
@@ -127,7 +141,10 @@ export function PillNavbar({
             );
           })}
           <div className="w-px h-5 bg-[var(--ivory)]/15 mx-1" />
-          {!loading && user && nombre ? (
+          {loading ? (
+            /* Skeleton prevents layout shift while auth resolves */
+            <div className="w-28 h-8 rounded-full bg-white/10 animate-pulse" />
+          ) : user && nombre ? (
             <AccountMenu
               nombre={nombre}
               role={role}
@@ -135,7 +152,7 @@ export function PillNavbar({
               onSignOut={signOut}
               variant="pill"
             />
-          ) : !loading ? (
+          ) : (
             <>
               <button
                 onClick={onLogin}
@@ -152,7 +169,7 @@ export function PillNavbar({
                 Empezar →
               </button>
             </>
-          ) : null}
+          )}
         </div>
       </motion.nav>
 
@@ -188,7 +205,9 @@ export function PillNavbar({
             ))}
           </div>
           <div className="mt-3 flex flex-col gap-2">
-            {!loading && user && nombre ? (
+            {loading ? (
+              <div className="h-14 rounded-2xl bg-white/10 animate-pulse" />
+            ) : user && nombre ? (
               <div className="flex items-center justify-between bg-white/10 rounded-2xl px-4 py-3">
                 <div className="flex flex-col leading-none">
                   <span className="text-sm font-medium text-white">{nombre}</span>

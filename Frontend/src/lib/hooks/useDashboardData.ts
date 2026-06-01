@@ -777,3 +777,115 @@ export function useVouchers() {
 
   return { vouchers, loading };
 }
+
+// ─── Public marketplace lots (anonymous-safe via backend API) ─────────────────
+// Uses GET /api/marketplace/lotes (supabaseAdmin on backend) instead of the
+// Supabase browser client, because lotes_fibra RLS is `to authenticated` only.
+// Anonymous home-page users cannot query lotes_fibra directly.
+
+export type PublicLotRecord = {
+  id: string;
+  codigo_lote: string | null;
+  peso_libras: number | null;
+  precio_por_libra: number | null;
+  color: string | null;
+  estado: string;
+  /** Aliased from ubicacion_general in the marketplace_lotes_publicos view */
+  region: string | null;
+  /** categorias_fibra.nombre */
+  categoria: string | null;
+  nivel_calidad: number | null;
+  productor_id: string | null;
+  nombre_asociacion: string | null;
+  comunidad: string | null;
+};
+
+export function usePublicMarketplaceLots() {
+  const [lots, setLots] = useState<PublicLotRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchApi<PublicLotRecord[]>("/api/marketplace/lotes");
+        if (!cancelled) {
+          setLots(Array.isArray(data) ? data : []);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Error al cargar lotes"
+          );
+          setLots([]);
+          setLoading(false);
+        }
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { lots, loading, error };
+}
+
+// ─── Market prices from backend ───────────────────────────────────────────────
+// Aggregated price stats per fiber category from GET /api/precios.
+// Public endpoint — works for anonymous and authenticated users alike.
+
+export type PriceRow = {
+  /** categorias_fibra.nombre */
+  category: string;
+  /** Average precio_por_libra across completed transactions */
+  avg: number;
+  min: number;
+  max: number;
+  /** Comparison: last-90-day avg vs prior-90-day */
+  trend: "up" | "down" | "flat";
+  txCount: number;
+};
+
+export function useMarketPrices() {
+  const [prices, setPrices] = useState<PriceRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchApi<PriceRow[]>("/api/precios");
+        if (!cancelled) {
+          setPrices(Array.isArray(data) ? data : []);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Error al cargar precios"
+          );
+          setPrices([]);
+          setLoading(false);
+        }
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { prices, loading, error };
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import {
@@ -251,19 +251,14 @@ function RoleSpecificSection({ role }: { role: Role }) {
 export default function ProfilePage() {
   const router = useRouter();
   const { user, nombre, role, estado, loading, signOut } = useAuth();
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!loading && mounted && !user) {
+    if (!loading && !user) {
       router.push("/auth/login");
     }
-  }, [loading, mounted, user, router]);
+  }, [loading, user, router]);
 
-  if (!mounted || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-[var(--ivory)] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
