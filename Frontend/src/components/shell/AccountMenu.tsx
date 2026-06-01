@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { User, ChevronDown, LogOut } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -80,6 +81,7 @@ export function AccountMenu({
   onSignOut,
   variant = "pill",
 }: AccountMenuProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const styles = getVariantStyles(variant);
@@ -186,7 +188,7 @@ export function AccountMenu({
                 className="rounded-xl px-3 py-2.5 cursor-pointer hover:bg-[var(--ivory)] transition-colors"
                 onClick={() => {
                   setOpen(false);
-                  window.location.href = "/profile";
+                  router.push("/profile");
                 }}
               >
                 <User className="w-4 h-4 mr-2.5 text-[var(--teal-deep)]" />
