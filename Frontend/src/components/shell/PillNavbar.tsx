@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Menu, X, Globe, Search } from "lucide-react";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { AccountMenu } from "./AccountMenu";
 
-export type NavTarget = "landing" | "marketplace" | "demo" | "prices" | "trust" | "login" | "register";
+export type NavTarget = "landing" | "marketplace" | "demo" | "prices" | "trust" | "profile" | "login" | "register";
 
 export function PillNavbar({
   current,
@@ -18,6 +20,7 @@ export function PillNavbar({
   const [open, setOpen] = useState(false);
   const [lang, setLang] = useState<"ES" | "EN">("ES");
   const [scrolled, setScrolled] = useState(false);
+  const { user, nombre, role, loading, signOut } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -124,20 +127,32 @@ export function PillNavbar({
             );
           })}
           <div className="w-px h-5 bg-[var(--ivory)]/15 mx-1" />
-          <button
-            onClick={onLogin}
-            className="px-4 py-2 rounded-full text-sm text-[var(--ivory)]/85 hover:text-[var(--ivory)]"
-            style={{ fontWeight: 500 }}
-          >
-            Ingresar
-          </button>
-          <button
-            onClick={onRegister}
-            className="px-5 py-2 rounded-full bg-[var(--terracotta)] hover:bg-[var(--terracotta-soft)] text-white text-sm transition-colors"
-            style={{ fontWeight: 600 }}
-          >
-            Empezar →
-          </button>
+          {!loading && user && nombre ? (
+            <AccountMenu
+              nombre={nombre}
+              role={role}
+              avatarUrl={user.user_metadata?.avatar_url ?? null}
+              onSignOut={signOut}
+              variant="pill"
+            />
+          ) : !loading ? (
+            <>
+              <button
+                onClick={onLogin}
+                className="px-4 py-2 rounded-full text-sm text-[var(--ivory)]/85 hover:text-[var(--ivory)]"
+                style={{ fontWeight: 500 }}
+              >
+                Ingresar
+              </button>
+              <button
+                onClick={onRegister}
+                className="px-5 py-2 rounded-full bg-[var(--terracotta)] hover:bg-[var(--terracotta-soft)] text-white text-sm transition-colors"
+                style={{ fontWeight: 600 }}
+              >
+                Empezar →
+              </button>
+            </>
+          ) : null}
         </div>
       </motion.nav>
 
@@ -172,9 +187,30 @@ export function PillNavbar({
               </button>
             ))}
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button onClick={() => { onLogin(); setOpen(false); }} className="py-3 rounded-2xl border border-white/15 text-sm">Ingresar</button>
-            <button onClick={() => { onRegister(); setOpen(false); }} className="py-3 rounded-2xl bg-[var(--terracotta)] text-white text-sm" style={{ fontWeight: 600 }}>Empezar →</button>
+          <div className="mt-3 flex flex-col gap-2">
+            {!loading && user && nombre ? (
+              <div className="flex items-center justify-between bg-white/10 rounded-2xl px-4 py-3">
+                <div className="flex flex-col leading-none">
+                  <span className="text-sm font-medium text-white">{nombre}</span>
+                  {role && (
+                    <span className="mt-0.5 text-[10px] px-2 py-0.5 rounded-full" style={{ background: "var(--gold-soft, #F5EFE0)", color: "var(--terracotta, #B24D2A)" }}>
+                      {role === "admin" ? "Administrador" : role === "productor" ? "Productor" : role === "empresa" ? "Comprador empresa" : "Entidad financiera"}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => { signOut(); setOpen(false); }}
+                  className="text-xs text-white/70 hover:text-white px-3 py-1.5 rounded-full border border-white/20"
+                >
+                  Cerrar sesión
+                </button>
+              </div>
+            ) : (
+              <>
+                <button onClick={() => { onLogin(); setOpen(false); }} className="py-3 rounded-2xl border border-white/15 text-sm">Ingresar</button>
+                <button onClick={() => { onRegister(); setOpen(false); }} className="py-3 rounded-2xl bg-[var(--terracotta)] text-white text-sm" style={{ fontWeight: 600 }}>Empezar →</button>
+              </>
+            )}
           </div>
           <div className="mt-3 flex items-center gap-2 text-[10px] font-mono uppercase text-[var(--ivory)]/40">
             <Globe className="w-3 h-3" /> ES · EN · AYM próximamente
